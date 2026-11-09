@@ -1,0 +1,32 @@
+{
+  "group": {
+    "name": "ชื่อกลุ่มของคุณ",
+    "concept": "แนวคิด/จุดเด่นของทีม",
+    "projects": ["ผลงานที่ทำร่วมกัน 1", "ผลงานที่ทำร่วมกัน 2"],
+    "contact": {
+      "email": "group@example.com",
+      "github": "https://github.com/your-group",
+      "line": "@yourgroup"
+    }
+  },
+  "members": [
+    {
+      "name": "สมาชิกคนที่ 1",
+      "role": "Frontend Developer",
+      "skills": ["React", "HTML", "CSS"],
+      "projects": ["ชื่อผลงานหรือโปรเจกต์ของคนนี้"]
+    },
+    {
+      "name": "สมาชิกคนที่ 2",
+      "role": "Backend Developer",
+      "skills": ["Node.js", "Express", "PostgreSQL"],
+      "projects": ["ชื่อผลงานหรือโปรเจกต์ของคนนี้"]
+    },
+    {
+      "name": "สมาชิกคนที่ 3",
+      "role": "UI/UX Designer",
+      "skills": ["Figma", "Design"],
+      "projects": ["ชื่อผลงานหรือโปรเจกต์ของคนนี้"]
+    }
+  ]
+}
