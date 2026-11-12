@@ -1,6 +1,6 @@
 import Chat from './Chat'
 import Profile from './Profile'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import './App.css'
 
 const members = [
@@ -36,6 +36,28 @@ const members = [
 function MemberCard({ member }) {
   const [flipped, setFlipped] = useState(false)
 
+  function tiltCard(event) {
+    if (event.pointerType === 'touch') return
+
+    const card = event.currentTarget
+    const rect = card.getBoundingClientRect()
+
+    const x = (event.clientX - rect.left) / rect.width
+    const y = (event.clientY - rect.top) / rect.height
+
+    const rotateY = (x - 0.5) * 36
+    const rotateX = (0.5 - y) * 36
+
+    card.style.setProperty('--tilt-x', `${rotateX}deg`)
+    card.style.setProperty('--tilt-y', `${rotateY}deg`)
+  }
+
+  function resetTilt(event) {
+    const card = event.currentTarget
+    card.style.setProperty('--tilt-x', '0deg')
+    card.style.setProperty('--tilt-y', '0deg')
+  }
+
   return (
     <div className={`lanyard-item ${member.color}`}>
       <div className="lanyard-strap"></div>
@@ -43,13 +65,15 @@ function MemberCard({ member }) {
 
       <div
         className={`lanyard-card ${flipped ? 'is-flipped' : ''}`}
+        onPointerMove={tiltCard}
+        onPointerLeave={resetTilt}
         tabIndex={0}
         role="button"
         aria-label={`Flip ${member.nickname}'s card`}
         aria-pressed={flipped}
         onClick={(event) => {
           if (!event.target.closest('a')) {
-            setFlipped(!flipped)
+            setFlipped(previous => !previous)
           }
         }}
         onKeyDown={(event) => {
@@ -59,7 +83,7 @@ function MemberCard({ member }) {
           ) return
 
           event.preventDefault()
-          setFlipped(!flipped)
+          setFlipped(previous => !previous)
         }}
       >
         <div className="lanyard-inner">
@@ -98,7 +122,30 @@ function MemberCard({ member }) {
   )
 }
 
+
 function App() {
+  const [skyMode, setSkyMode] = useState('day')
+  const sparkleId = useRef(0)
+  const [sparkles, setSparkles] = useState([])
+  const lastSparkleTime = useRef(0)
+
+function createSparkle(event) {
+  if (event.pointerType === 'touch') return
+
+  const now = Date.now()
+  if (now - lastSparkleTime.current < 80) return
+  lastSparkleTime.current = now
+
+  const rect = event.currentTarget.getBoundingClientRect()
+
+  const sparkle = {
+    id: sparkleId.current++,
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  }
+
+  setSparkles(previous => [...previous.slice(-12), sparkle])
+}
   function moveClouds(event) {
     if (event.pointerType === 'touch') return
 
@@ -146,11 +193,33 @@ function App() {
     <>
       {/* Home */}
       <section
-        className="sky-hero"
-        id="home"
-        onPointerMove={moveClouds}
-        onPointerLeave={resetClouds}
-      >
+ className={`sky-hero ${skyMode === 'sunset' ? 'sunset' : ''}`}
+  id="home"
+  onPointerMove={event => {
+    moveClouds(event)
+    createSparkle(event)
+  }}
+  onPointerLeave={resetClouds}
+>
+  <div className="sparkle-layer" aria-hidden="true">
+  {sparkles.map(sparkle => (
+    <span
+      key={sparkle.id}
+      className="mouse-sparkle"
+      style={{
+        left: sparkle.x,
+        top: sparkle.y
+      }}
+      onAnimationEnd={() => {
+        setSparkles(previous =>
+          previous.filter(item => item.id !== sparkle.id)
+        )
+      }}
+    >
+      ✦
+    </span>
+  ))}
+</div>
         <div className="cloud-layer" aria-hidden="true">
           {[1, 2, 3].map((number) => (
             <div
@@ -173,13 +242,35 @@ function App() {
           ))}
         </div>
 
-        <nav className="sky-nav">
-          <a href="#home">home</a>
-          <a href="#team">team</a>
-          <a href="#projects">project</a>
-          <a href="#contact">contact</a>
-          <a href="/chat">AI chat →</a>
-        </nav>
+       
+<nav className="sky-nav">
+  <a href="#home">home</a>
+  <a href="#team">team</a>
+  <a href="#projects">project</a>
+  <a href="#contact">contact</a>
+  <a href="/chat">AI chat →</a>
+
+
+<button
+  type="button"
+  className={`sky-toggle ${skyMode === 'sunset' ? 'is-night' : ''}`}
+  onClick={() =>
+    setSkyMode(previous =>
+      previous === 'day' ? 'sunset' : 'day'
+    )
+  }
+  aria-label="Toggle day and night"
+  aria-pressed={skyMode === 'sunset'}
+>
+  <span className="toggle-stars">✦ ✧</span>
+  <span className="toggle-clouds">☁ ☁</span>
+  <span className="toggle-orb">
+    {skyMode === 'day' ? '☀' : '☾'}
+  </span>
+</button>
+
+</nav>
+
 
         <div className="sky-content">
           <h1>
