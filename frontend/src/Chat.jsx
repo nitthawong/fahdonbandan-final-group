@@ -170,7 +170,7 @@ useEffect(() => {
     setInput('')
   }
 
-  function sendMessage(text = input) {
+async function sendMessage(text = input) {
   const question = String(text).trim()
 
   if (!question || pendingRef.current) return
@@ -202,34 +202,48 @@ useEffect(() => {
 
   setInput('')
 
-  timerRef.current = setTimeout(() => {
-    try {
-      const reply = getBotReply(question)
+  try {
+    const response = await fetch('http://localhost:5000/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: targetId,
+        message: question
+      })
+    })
 
-      setChatState(previous => ({
-        ...previous,
-        chats: previous.chats.map(chat =>
-          chat.id === targetId
-            ? {
-                ...chat,
-                messages: [
-                  ...chat.messages,
-                  { sender: 'bot', text: reply }
-                ]
-              }
-            : chat
-        )
-      }))
-    } catch {
-      setError('Something went wrong. Please try again.')
-    } finally {
-      pendingRef.current = false
-      setLoadingChatId(null)
-      timerRef.current = null
+    if (!response.ok) {
+      throw new Error('Backend returned an error')
     }
-  }, 800)
+
+    const data = await response.json()
+
+    setChatState(previous => ({
+      ...previous,
+      chats: previous.chats.map(chat =>
+        chat.id === targetId
+          ? {
+              ...chat,
+              messages: [
+                ...chat.messages,
+                { sender: 'bot', text: data.reply }
+              ]
+            }
+          : chat
+      )
+    }))
+  } catch (err) {
+    console.error(err)
+    setError('Cannot connect to AI. Please try again.')
+  } finally {
+    pendingRef.current = false
+    setLoadingChatId(null)
+  }
 }
 
+  
   return (
     <>
       <header className="navbar">
