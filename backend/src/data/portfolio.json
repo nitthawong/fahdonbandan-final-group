@@ -1,0 +1,32 @@
+{
+  "group": {
+    "name": "ฟ้าดลบันดาล",
+    "concept": "แนวคิด/จุดเด่นของทีม",
+    "projects": ["Chat AI Portfolio กลุ่มฟ้าดลบันดาล", "ผลงานที่ทำร่วมกัน 2"],
+    "contact": {
+      "email": "group@example.com",
+      "github": "https://github.com/your-group",
+      "line": "@yourgroup"
+    }
+  },
+  "members": [
+    {
+      "name": "อาทิตยา รวยทรัพย์",
+      "role": "Frontend Developer",
+      "skills": ["React", "HTML", "CSS"],
+      "projects": ["Chat AI Portfolio กลุ่มฟ้าดลบันดาล"]
+    },
+    {
+      "name": "นิษฐา วงค์ยะลา",
+      "role": "Backend Developer",
+      "skills": ["Node.js", "Express", "PostgreSQL"],
+      "projects": ["Chat AI Portfolio กลุ่มฟ้าดลบันดาล"]
+    },
+    {
+      "name": "พชรพล กมลเลิศ",
+      "role": "AI & CI/CD Engineer",
+      "skills": ["Python", "RAG", "GitHub Action", "Docker"],
+      "projects": ["Chat AI Portfolio กลุ่มฟ้าดลบันดาล"]
+    }
+  ]
+}
