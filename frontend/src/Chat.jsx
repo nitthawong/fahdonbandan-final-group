@@ -1,9 +1,9 @@
-
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 const STORAGE_KEY = 'ourteam-chats'
 const ACTIVE_KEY = 'ourteam-active-chat'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 const greeting =
   "Hello! I'm the ฟ้าดลบันดาล AI Assistant. How can I help you today?"
@@ -39,40 +39,6 @@ function loadChats() {
   }
 }
 
-function getBotReply(question) {
-  const q = question.toLowerCase()
-
-  if (q.includes('ham') || q.includes('แฮม')) {
-    return 'Ham is our Frontend Developer. She works on the Portfolio and Chat UI.'
-  }
-
-  if (q.includes('run') || q.includes('รัน')) {
-    return 'Run is our Backend Developer, responsible for backend APIs.'
-  }
-
-  if (q.includes('ping') || q.includes('พิง')) {
-    return 'Phuping works on AI Integration, CI/CD, and Deployment.'
-  }
-
-  if (
-    q.includes('project') ||
-    q.includes('โปรเจกต์') ||
-    q.includes('ผลงาน')
-  ) {
-    return 'Our project is Team Portfolio & AI Chatbot, combining frontend, backend APIs, and AI integration.'
-  }
-
-  if (
-    q.includes('team') ||
-    q.includes('ทีม') ||
-    q.includes('สมาชิก')
-  ) {
-    return 'Our team ฟ้าดลบันดาล has 3 members: Ham, Run, and Phuping.'
-  }
-
-  return "I'm a demo chatbot. You can ask me about our team, members, or projects!"
-}
-
 function Chat() {
   const [chatState, setChatState] = useState(loadChats)
   const [input, setInput] = useState('')
@@ -80,7 +46,6 @@ function Chat() {
   const [error, setError] = useState('')
   const messagesRef = useRef(null)
   const pendingRef = useRef(false)
-  const timerRef = useRef(null)
 
   const { chats, activeId } = chatState
   const activeChat = chats.find(chat => chat.id === activeId)
@@ -90,19 +55,13 @@ function Chat() {
     localStorage.setItem(ACTIVE_KEY, activeId || '')
   }, [chats, activeId])
 
- useEffect(() => {
-  const container = messagesRef.current
-  if (container) {
-    container.scrollTop = container.scrollHeight
-  }
-}, [activeChat?.messages, loadingChatId])
-useEffect(() => {
-  return () => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current)
+  useEffect(() => {
+    const container = messagesRef.current
+    if (container) {
+      container.scrollTop = container.scrollHeight
     }
-  }
-}, [])
+  }, [activeChat?.messages, loadingChatId])
+
   function createNewChat() {
     const chat = makeChat()
 
@@ -170,41 +129,55 @@ useEffect(() => {
     setInput('')
   }
 
-  function sendMessage(text = input) {
-  const question = String(text).trim()
+  async function sendMessage(text = input) {
+    const question = String(text).trim()
 
-  if (!question || pendingRef.current) return
+    if (!question || pendingRef.current) return
 
-  pendingRef.current = true
-  setError('')
+    pendingRef.current = true
+    setError('')
 
-  const targetId = activeId
-  setLoadingChatId(targetId)
+    const targetId = activeId
+    setLoadingChatId(targetId)
 
-  setChatState(previous => ({
-    ...previous,
-    chats: previous.chats.map(chat => {
-      if (chat.id !== targetId) return chat
+    setChatState(previous => ({
+      ...previous,
+      chats: previous.chats.map(chat => {
+        if (chat.id !== targetId) return chat
 
-      return {
-        ...chat,
-        title:
-          chat.title === 'New Chat'
-            ? question.slice(0, 30)
-            : chat.title,
-        messages: [
-          ...chat.messages,
-          { sender: 'user', text: question }
-        ]
-      }
-    })
-  }))
+        return {
+          ...chat,
+          title:
+            chat.title === 'New Chat'
+              ? question.slice(0, 30)
+              : chat.title,
+          messages: [
+            ...chat.messages,
+            { sender: 'user', text: question }
+          ]
+        }
+      })
+    }))
 
-  setInput('')
+    setInput('')
 
-  timerRef.current = setTimeout(() => {
     try {
-      const reply = getBotReply(question)
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionId: targetId,
+          message: question
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response from AI')
+      }
 
       setChatState(previous => ({
         ...previous,
@@ -214,21 +187,20 @@ useEffect(() => {
                 ...chat,
                 messages: [
                   ...chat.messages,
-                  { sender: 'bot', text: reply }
+                  { sender: 'bot', text: data.reply }
                 ]
               }
             : chat
         )
       }))
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      console.error('เชื่อมต่อ Backend ไม่สำเร็จ:', err)
+      setError(err.message || 'Something went wrong. Please try again.')
     } finally {
       pendingRef.current = false
       setLoadingChatId(null)
-      timerRef.current = null
     }
-  }, 800)
-}
+  }
 
   return (
     <>
@@ -341,7 +313,7 @@ useEffect(() => {
           </aside>
 
           <div className="chat-main">
-          <div id="chat-messages" ref={messagesRef}>
+            <div id="chat-messages" ref={messagesRef}>
               {activeChat?.messages.map((message, index) => (
                 <div
                   key={index}
@@ -354,65 +326,65 @@ useEffect(() => {
                   {message.text}
                 </div>
               ))}
-       {loadingChatId === activeId && (
-  <div className="bot-message typing-message" role="status">
-    <span className="typing-dots" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
-    </span>
-    <span>AI is typing...</span>
-  </div>
-)}
+              {loadingChatId === activeId && (
+                <div className="bot-message typing-message" role="status">
+                  <span className="typing-dots" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </span>
+                  <span>AI is typing...</span>
+                </div>
+              )}
 
-{error && (
-  <p role="alert" style={{ color: '#b42318' }}>
-    {error}
-  </p>
-)}
+              {error && (
+                <p role="alert" style={{ color: '#b42318' }}>
+                  {error}
+                </p>
+              )}
             </div>
 
             <div className="chat-input-area">
-           <input
-  type="text"
-  id="user-input"
-  placeholder="Type your message..."
-  value={input}
-  disabled={loadingChatId !== null}
-  onChange={event => setInput(event.target.value)}
-  onKeyDown={event => {
-    if (event.key === 'Enter') sendMessage()
-  }}
-/>
+              <input
+                type="text"
+                id="user-input"
+                placeholder="Type your message..."
+                value={input}
+                disabled={loadingChatId !== null}
+                onChange={event => setInput(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') sendMessage()
+                }}
+              />
 
-         <button
-  id="send-button"
-  type="button"
-  disabled={loadingChatId !== null}
-  onClick={() => sendMessage()}
->
-  {loadingChatId !== null ? 'Thinking...' : 'Send →'}
-</button>
+              <button
+                id="send-button"
+                type="button"
+                disabled={loadingChatId !== null}
+                onClick={() => sendMessage()}
+              >
+                {loadingChatId !== null ? 'Thinking...' : 'Send →'}
+              </button>
             </div>
           </div>
         </div>
 
-     <div className="suggestions">
-  {[
-    'About our team',
-    'Our projects',
-    'Team members'
-  ].map(suggestion => (
-    <button
-      key={suggestion}
-      type="button"
-      disabled={loadingChatId !== null}
-      onClick={() => sendMessage(suggestion)}
-    >
-      {suggestion}
-    </button>
-  ))}
-</div>
+        <div className="suggestions">
+          {[
+            'About our team',
+            'Our projects',
+            'Team members'
+          ].map(suggestion => (
+            <button
+              key={suggestion}
+              type="button"
+              disabled={loadingChatId !== null}
+              onClick={() => sendMessage(suggestion)}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
       </main>
 
       <footer>

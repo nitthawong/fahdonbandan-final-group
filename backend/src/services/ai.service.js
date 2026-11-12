@@ -1,44 +1,72 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 import fs from "fs";
 import path from "path";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// โหลดข้อมูล portfolio.json มาเป็นบริบทให้ AI ตอบคำถาม
+// โหลดข้อมูล portfolio.json
 const portfolioPath = path.resolve("src/data/portfolio.json");
 const portfolioData = fs.readFileSync(portfolioPath, "utf-8");
 
+let cachedModel = null;
+
+async function getAvailableModel() {
+  if (cachedModel) return cachedModel;
+
+  const list = await groq.models.list();
+  // กรองเอาเฉพาะโมเดลสำหรับแชท (ตัดโมเดลเสียง whisper และระบบป้องกัน guard ออก)
+  const chatModels = list.data.filter(
+    (m) =>
+      !m.id.includes("whisper") &&
+      !m.id.includes("guard") &&
+      !m.id.includes("tts")
+  );
+
+  if (chatModels.length === 0) {
+    throw new Error("ไม่พบโมเดลที่เปิดใช้งานในบัญชี Groq นี้");
+  }
+
+  // เลือกตระกูล llama หรือ qwen หรือ gpt ก่อน หากไม่มีให้เอาตัวแรกที่บัญชีรองรับ
+  const preferred =
+    chatModels.find((m) => m.id.includes("llama")) ||
+    chatModels.find((m) => m.id.includes("qwen")) ||
+    chatModels.find((m) => m.id.includes("gpt")) ||
+    chatModels[0];
+
+  cachedModel = preferred.id;
+  console.log("Using Groq Model:", cachedModel);
+  return cachedModel;
+}
+
 export async function askAI(messages) {
-  // ดึงข้อความล่าสุดที่ผู้ใช้พิมพ์เข้ามา
-  const lastUserMessage = messages[messages.length - 1]?.content?.trim().toLowerCase() || "";
+  const lastMsg = messages[messages.length - 1]?.content?.trim().toLowerCase() || "";
 
-  // ---------------------------------------------------------
-  // ส่วนที่ 1: ตอบแบบมีแพทเทิร์น (Rule-based / Quick Replies)
-  // ---------------------------------------------------------
-  if (lastUserMessage === "สวัสดี" || lastUserMessage === "hello" || lastUserMessage === "hi") {
-    return "สวัสดีครับ! ผมคือผู้ช่วย AI ของทีมฟ้าดลบันดาล สอบถามข้อมูลสมาชิก ทักษะ หรือผลงานโปรเจกต์ของทีมได้เลยครับ";
+  // 1. ตอบแบบมีแพทเทิร์น (Rule-based)
+  if (lastMsg === "สวัสดี" || lastMsg === "hello" || lastMsg === "hi") {
+    return "สวัสดีครับ! ผมคือผู้ช่วย AI ของทีมฟ้าดลบันดาล สอบถามข้อมูลสมาชิก ทักษะ หรือโปรเจกต์ของทีมได้เลยครับ";
   }
 
-  if (lastUserMessage.includes("ช่องทางติดต่อ") || lastUserMessage.includes("github")) {
-    const parsedData = JSON.parse(portfolioData);
-    return `คุณสามารถติดตามผลงานและโค้ดของทีมฟ้าดลบันดาลได้ที่ GitHub: ${parsedData.group.contact.github}`;
+  if (lastMsg.includes("github") || lastMsg.includes("ช่องทางติดต่อ")) {
+    const data = JSON.parse(portfolioData);
+    return `สามารถดูโค้ดและติดตามผลงานของทีมฟ้าดลบันดาลได้ที่ GitHub: ${data.group.contact.github}`;
   }
 
-  // ---------------------------------------------------------
-  // ส่วนที่ 2: ตอบแบบดึงคำตอบจริงจาก Gemini (สำหรับคำถามทั่วไป/เจาะลึก)
-  // ---------------------------------------------------------
-  const formattedContents = messages.map((msg) => ({
-    role: msg.role === "assistant" ? "model" : "user",
-    parts: [{ text: msg.content }],
-  }));
+  // 2. ดึงชื่อโมเดลที่บัญชีใช้งานได้จริง แล้วถามตอบจาก portfolio.json
+  const modelId = await getAvailableModel();
 
-  const response = await ai.models.generateContent({
-    model: process.env.AI_MODEL || "gemini-2.5-flash",
-    contents: formattedContents,
-    config: {
-      systemInstruction: `คุณคือผู้ช่วยตอบคำถามของทีม "ฟ้าดลบันดาล" จงตอบคำถามโดยอ้างอิงจากข้อมูล JSON ต่อไปนี้เท่านั้น ตอบให้กระชับ เป็นมิตร และใช้ภาษาเดียวกับที่ผู้ใช้ถาม:\n${portfolioData}`,
-    },
+  const response = await groq.chat.completions.create({
+    model: modelId,
+    messages: [
+      {
+        role: "system",
+        content: `คุณคือผู้ช่วยตอบคำถามของทีม "ฟ้าดลบันดาล" จงตอบคำถามโดยอ้างอิงจากข้อมูล JSON ต่อไปนี้เท่านั้น ห้ามแต่งเรื่องเพิ่ม ตอบให้กระชับ เป็นมิตร และใช้ภาษาเดียวกับที่ผู้ใช้ถาม:\n${portfolioData}`,
+      },
+      ...messages.map((m) => ({
+        role: m.role === "model" ? "assistant" : m.role,
+        content: m.content,
+      })),
+    ],
   });
 
-  return response.text;
+  return response.choices[0]?.message?.content || "ขออภัย ไม่สามารถประมวลผลคำตอบได้";
 }
