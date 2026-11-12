@@ -354,9 +354,14 @@ useEffect(() => {
                   {message.text}
                 </div>
               ))}
-         {loadingChatId === activeId && (
-  <div className="bot-message" role="status">
-    ✦ AI is typing...
+       {loadingChatId === activeId && (
+  <div className="bot-message typing-message" role="status">
+    <span className="typing-dots" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+    <span>AI is typing...</span>
   </div>
 )}
 
