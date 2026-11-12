@@ -4,18 +4,17 @@
     "concept": "แนวคิด/จุดเด่นของทีม",
     "projects": ["Chat AI พร้อม Portfolio ของกลุ่มฟ้าดลบันดาล ทำในส่วน Backend API"],
     "contact": {
-      "github": "https://github.com/your-group",
+      "github": "https://github.com/your-group"
     }
   },
   "members": [
     {
       "name": "อาทิตยา รวยทรัพย์",
       "role": "Frontend Developer",
-      "skills": ["HTML" ,"CSS","JavaScript",
-"Basic Python"],
-      "projects": ["AI Chat & Team Portfolio Website ของทีมฟ้าดลบันดาล
-ออกแบบหน้าเว็บไซต์ Portfolio ของทีม
-สร้างหน้า AI Chat และออกแบบ Chat UI"]
+      "skills": ["HTML", "CSS", "JavaScript", "Basic Python"],
+      "projects": [
+        "AI Chat & Team Portfolio Website ของทีมฟ้าดลบันดาล\nออกแบบหน้าเว็บไซต์ Portfolio ของทีม\nสร้างหน้า AI Chat และออกแบบ Chat UI"
+      ]
     },
     {
       "name": "นิษฐา วงค์ยะลา",
