@@ -1,34 +1,44 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync } from "fs";
+import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
+import path from "path";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const portfolio = JSON.parse(
-  readFileSync(new URL("../data/portfolio.json", import.meta.url), "utf-8")
-);
+// โหลดข้อมูล portfolio.json มาเป็นบริบทให้ AI ตอบคำถาม
+const portfolioPath = path.resolve("src/data/portfolio.json");
+const portfolioData = fs.readFileSync(portfolioPath, "utf-8");
 
-// สร้าง system prompt จากข้อมูล Portfolio ของกลุ่มและสมาชิกทุกคน
-function buildSystemPrompt() {
-  return `คุณคือผู้ช่วย AI ประจำเว็บ Portfolio ของกลุ่ม "${portfolio.group.name}"
-หน้าที่: ตอบคำถามเกี่ยวกับกลุ่มและสมาชิกแต่ละคน โดยอิงจากข้อมูลด้านล่างนี้เท่านั้น
-ถ้าคำถามไม่เกี่ยวกับข้อมูลนี้ หรือไม่มีข้อมูลในส่วนนั้น ให้บอกตรง ๆ ว่าไม่ทราบ ห้ามเดาหรือแต่งข้อมูลเพิ่ม
-ตอบเป็นภาษาเดียวกับที่ผู้ใช้ถาม สุภาพและกระชับ
-
-ข้อมูล Portfolio (JSON):
-${JSON.stringify(portfolio, null, 2)}`;
-}
-
-// messages = [{ role: "user" | "assistant", content: "..." }]
 export async function askAI(messages) {
-  const response = await client.messages.create({
-    model: process.env.AI_MODEL || "claude-sonnet-4-6",
-    max_tokens: 1000,
-    system: buildSystemPrompt(),
-    messages,
+  // ดึงข้อความล่าสุดที่ผู้ใช้พิมพ์เข้ามา
+  const lastUserMessage = messages[messages.length - 1]?.content?.trim().toLowerCase() || "";
+
+  // ---------------------------------------------------------
+  // ส่วนที่ 1: ตอบแบบมีแพทเทิร์น (Rule-based / Quick Replies)
+  // ---------------------------------------------------------
+  if (lastUserMessage === "สวัสดี" || lastUserMessage === "hello" || lastUserMessage === "hi") {
+    return "สวัสดีครับ! ผมคือผู้ช่วย AI ของทีมฟ้าดลบันดาล สอบถามข้อมูลสมาชิก ทักษะ หรือผลงานโปรเจกต์ของทีมได้เลยครับ";
+  }
+
+  if (lastUserMessage.includes("ช่องทางติดต่อ") || lastUserMessage.includes("github")) {
+    const parsedData = JSON.parse(portfolioData);
+    return `คุณสามารถติดตามผลงานและโค้ดของทีมฟ้าดลบันดาลได้ที่ GitHub: ${parsedData.group.contact.github}`;
+  }
+
+  // ---------------------------------------------------------
+  // ส่วนที่ 2: ตอบแบบดึงคำตอบจริงจาก Gemini (สำหรับคำถามทั่วไป/เจาะลึก)
+  // ---------------------------------------------------------
+  const formattedContents = messages.map((msg) => ({
+    role: msg.role === "assistant" ? "model" : "user",
+    parts: [{ text: msg.content }],
+  }));
+
+  const response = await ai.models.generateContent({
+    model: process.env.AI_MODEL || "gemini-2.5-flash",
+    contents: formattedContents,
+    config: {
+      systemInstruction: `คุณคือผู้ช่วยตอบคำถามของทีม "ฟ้าดลบันดาล" จงตอบคำถามโดยอ้างอิงจากข้อมูล JSON ต่อไปนี้เท่านั้น ตอบให้กระชับ เป็นมิตร และใช้ภาษาเดียวกับที่ผู้ใช้ถาม:\n${portfolioData}`,
+    },
   });
 
-  return response.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
+  return response.text;
 }
