@@ -76,7 +76,11 @@ function getBotReply(question) {
 function Chat() {
   const [chatState, setChatState] = useState(loadChats)
   const [input, setInput] = useState('')
-  const messagesEndRef = useRef(null)
+  const [loadingChatId, setLoadingChatId] = useState(null)
+  const [error, setError] = useState('')
+  const messagesRef = useRef(null)
+  const pendingRef = useRef(false)
+  const timerRef = useRef(null)
 
   const { chats, activeId } = chatState
   const activeChat = chats.find(chat => chat.id === activeId)
@@ -86,10 +90,19 @@ function Chat() {
     localStorage.setItem(ACTIVE_KEY, activeId || '')
   }, [chats, activeId])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: 'end' })
-  }, [activeChat?.messages])
-
+ useEffect(() => {
+  const container = messagesRef.current
+  if (container) {
+    container.scrollTop = container.scrollHeight
+  }
+}, [activeChat?.messages, loadingChatId])
+useEffect(() => {
+  return () => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current)
+    }
+  }
+}, [])
   function createNewChat() {
     const chat = makeChat()
 
@@ -158,33 +171,64 @@ function Chat() {
   }
 
   function sendMessage(text = input) {
-    const question = String(text).trim()
-    if (!question) return
+  const question = String(text).trim()
 
-    const targetId = activeId
+  if (!question || pendingRef.current) return
 
-    setChatState(previous => ({
-      ...previous,
-      chats: previous.chats.map(chat => {
-        if (chat.id !== targetId) return chat
+  pendingRef.current = true
+  setError('')
 
-        return {
-          ...chat,
-          title:
-            chat.title === 'New Chat'
-              ? question.slice(0, 30)
-              : chat.title,
-          messages: [
-            ...chat.messages,
-            { sender: 'user', text: question },
-            { sender: 'bot', text: getBotReply(question) }
-          ]
-        }
-      })
-    }))
+  const targetId = activeId
+  setLoadingChatId(targetId)
 
-    setInput('')
-  }
+  setChatState(previous => ({
+    ...previous,
+    chats: previous.chats.map(chat => {
+      if (chat.id !== targetId) return chat
+
+      return {
+        ...chat,
+        title:
+          chat.title === 'New Chat'
+            ? question.slice(0, 30)
+            : chat.title,
+        messages: [
+          ...chat.messages,
+          { sender: 'user', text: question }
+        ]
+      }
+    })
+  }))
+
+  setInput('')
+
+  timerRef.current = setTimeout(() => {
+    try {
+      const reply = getBotReply(question)
+
+      setChatState(previous => ({
+        ...previous,
+        chats: previous.chats.map(chat =>
+          chat.id === targetId
+            ? {
+                ...chat,
+                messages: [
+                  ...chat.messages,
+                  { sender: 'bot', text: reply }
+                ]
+              }
+            : chat
+        )
+      }))
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      pendingRef.current = false
+      setLoadingChatId(null)
+      timerRef.current = null
+    }
+  }, 800)
+}
 
   return (
     <>
@@ -297,7 +341,7 @@ function Chat() {
           </aside>
 
           <div className="chat-main">
-            <div id="chat-messages">
+          <div id="chat-messages" ref={messagesRef}>
               {activeChat?.messages.map((message, index) => (
                 <div
                   key={index}
@@ -310,47 +354,60 @@ function Chat() {
                   {message.text}
                 </div>
               ))}
-              <div ref={messagesEndRef} />
+         {loadingChatId === activeId && (
+  <div className="bot-message" role="status">
+    ✦ AI is typing...
+  </div>
+)}
+
+{error && (
+  <p role="alert" style={{ color: '#b42318' }}>
+    {error}
+  </p>
+)}
             </div>
 
             <div className="chat-input-area">
-              <input
-                type="text"
-                id="user-input"
-                placeholder="Type your message..."
-                value={input}
-                onChange={event => setInput(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') sendMessage()
-                }}
-              />
+           <input
+  type="text"
+  id="user-input"
+  placeholder="Type your message..."
+  value={input}
+  disabled={loadingChatId !== null}
+  onChange={event => setInput(event.target.value)}
+  onKeyDown={event => {
+    if (event.key === 'Enter') sendMessage()
+  }}
+/>
 
-              <button
-                id="send-button"
-                type="button"
-                onClick={() => sendMessage()}
-              >
-                Send →
-              </button>
+         <button
+  id="send-button"
+  type="button"
+  disabled={loadingChatId !== null}
+  onClick={() => sendMessage()}
+>
+  {loadingChatId !== null ? 'Thinking...' : 'Send →'}
+</button>
             </div>
           </div>
         </div>
 
-        <div className="suggestions">
-          {[
-            'About our team',
-            'Our projects',
-            'Team members'
-          ].map(suggestion => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => sendMessage(suggestion)}
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+     <div className="suggestions">
+  {[
+    'About our team',
+    'Our projects',
+    'Team members'
+  ].map(suggestion => (
+    <button
+      key={suggestion}
+      type="button"
+      disabled={loadingChatId !== null}
+      onClick={() => sendMessage(suggestion)}
+    >
+      {suggestion}
+    </button>
+  ))}
+</div>
       </main>
 
       <footer>
