@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import './App.css'
 
 const STORAGE_KEY = 'ourteam-chats'
@@ -323,19 +325,26 @@ function Chat() {
                       : 'bot-message'
                   }
                 >
-                  {message.text}
-                </div>
-              ))}
-              {loadingChatId === activeId && (
-                <div className="bot-message typing-message" role="status">
-                  <span className="typing-dots" aria-hidden="true">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </span>
-                  <span>AI is typing...</span>
-                </div>
-              )}
+              
+  {message.sender === 'bot' ? (
+    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+      {message.text}
+    </ReactMarkdown>
+  ) : (
+    message.text
+  )}
+</div>
+))}
+{loadingChatId === activeId && (
+  <div className="bot-message typing-message" role="status">
+    <span className="typing-dots" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+    <span>AI is typing...</span>
+  </div>
+)}
 
               {error && (
                 <p role="alert" style={{ color: '#b42318' }}>

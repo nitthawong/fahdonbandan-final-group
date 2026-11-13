@@ -1423,3 +1423,77 @@ body[data-member="ping"] {
 
   box-shadow: 0 8px 25px rgba(35, 36, 72, 0.12);
 }
+
+
+/* AI Chat - Markdown formatting */
+.bot-message {
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.bot-message p {
+  margin: 0 0 12px;
+}
+
+.bot-message p:last-child {
+  margin-bottom: 0;
+}
+
+.bot-message h1,
+.bot-message h2,
+.bot-message h3 {
+  line-height: 1.4;
+  margin: 16px 0 8px;
+  font-weight: 700;
+}
+
+.bot-message h1 { font-size: 1.3rem; }
+.bot-message h2 { font-size: 1.15rem; }
+.bot-message h3 { font-size: 1.05rem; }
+
+.bot-message ul,
+.bot-message ol {
+  margin: 8px 0 12px;
+  padding-left: 24px;
+}
+
+.bot-message li {
+  margin-bottom: 5px;
+}
+
+.bot-message pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: #24243a;
+  color: #fff;
+}
+
+.bot-message code {
+  overflow-wrap: anywhere;
+}
+
+.bot-message table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.bot-message th,
+.bot-message td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+/* Fix AI Markdown heading colors */
+.bot-message h1,
+.bot-message h2,
+.bot-message h3,
+.bot-message h4,
+.bot-message h5,
+.bot-message h6 {
+  color: #2b2a4a;
+}
