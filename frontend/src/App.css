@@ -1497,3 +1497,261 @@ body[data-member="ping"] {
 .bot-message h6 {
   color: #2b2a4a;
 }
+
+/* Mobile layout fix — keep original navigation */
+@media (max-width: 768px) {
+  .sky-nav {
+    width: calc(100% - 24px);
+    max-width: 100%;
+    margin: 16px auto 0;
+    padding: 12px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+
+  .sky-nav a {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .sky-nav .sky-toggle {
+    flex: 0 0 100px;
+    width: 100px;
+    margin: 4px auto 0;
+  }
+}
+
+/* ===== Mobile Chat Scroll Fix ===== */
+@media (max-width: 768px) {
+  .chat-layout {
+    display: flex;
+    flex-direction: column;
+    height: 70dvh;
+    min-height: 480px;
+    overflow: hidden;
+  }
+
+  .chat-sidebar {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 140px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .chat-main {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  #chat-messages {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+
+/* Smaller day/night toggle on mobile */
+@media (max-width: 768px) {
+  .sky-nav .sky-toggle {
+    flex: 0 0 76px;
+    width: 76px;
+    height: 38px;
+    margin: 4px auto 0;
+  }
+
+  .sky-nav .toggle-orb {
+    width: 25px;
+    height: 25px;
+    font-size: 19px;
+    top: 3px;
+    left: 3px;
+  }
+
+  .sky-nav .sky-toggle.is-night .toggle-orb {
+    transform: translateX(38px);
+  }
+}
+
+/* ===== Mobile: 3 Team Members in One Row ===== */
+@media (max-width: 768px) {
+  .lanyard-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    align-items: start;
+    justify-items: center;
+  }
+
+  .lanyard-item {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .lanyard-strap {
+    width: 6px;
+    height: 38px;
+  }
+
+  .lanyard-ring {
+    width: 16px;
+    height: 16px;
+    border-width: 3px;
+    margin-bottom: 5px;
+  }
+
+  .lanyard-card {
+    width: 100%;
+    max-width: 115px;
+    height: 175px;
+  }
+
+  .lanyard-front,
+  .lanyard-back {
+    border-radius: 10px;
+  }
+
+  .lanyard-color {
+    height: 34px;
+  }
+}
+
+/* Mobile member card text fix */
+@media (max-width: 768px) {
+  .lanyard-card {
+    height: 190px;
+  }
+
+  .lanyard-front,
+  .lanyard-back {
+    overflow: hidden;
+  }
+
+  .lanyard-front h3,
+  .lanyard-back h3 {
+    font-size: 10px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .lanyard-front p,
+  .lanyard-back p {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+}
+
+/* ===== Mobile Member Cards: Compact Layout ===== */
+@media (max-width: 768px) {
+  .lanyard-card {
+    width: 100%;
+    max-width: 115px;
+    height: 190px;
+  }
+
+  .lanyard-color {
+    height: 38px;
+  }
+
+  .lanyard-avatar {
+    width: 66px;
+    height: 66px;
+    margin: -24px auto 12px;
+  }
+
+@media (max-width: 768px) {
+  .lanyard-front h3 {
+    display: none;
+  }
+
+  .lanyard-front small {
+    display: block;
+    font-size: 10px;
+    line-height: 1.25;
+    padding: 0 4px;
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+  }
+}
+
+  .lanyard-front p {
+    margin: 12px 2px 0;
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .lanyard-back {
+    padding: 9px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lanyard-back h3 {
+    font-size: 9px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .lanyard-back p {
+    font-size: 9px;
+    line-height: 1.2;
+    margin-bottom: 3px;
+    overflow-wrap: anywhere;
+  }
+
+  .lanyard-back .profile-link {
+    font-size: 9px;
+    padding: 5px 8px;
+    margin-top: 5px;
+  }
+}
+
+/* Mobile: Show full member information */
+@media (max-width: 768px) {
+  .lanyard-card {
+    height: 220px;
+  }
+
+  .lanyard-front h3 {
+    display: block;
+    font-size: 9px;
+    line-height: 1.25;
+    padding: 0 3px;
+    margin: 6px 0 3px;
+    overflow-wrap: anywhere;
+  }
+
+  .lanyard-front p {
+    display: block;
+    font-size: 12px;
+    margin: 4px 0 7px;
+  }
+
+  .lanyard-front small {
+    display: block;
+    font-size: 9px;
+    line-height: 1.25;
+    padding: 0 4px;
+    overflow-wrap: anywhere;
+  }
+}
