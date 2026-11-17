@@ -243,6 +243,7 @@ function createSparkle(event) {
         </div>
 
        
+
 <nav className="sky-nav">
   <a href="#home">home</a>
   <a href="#team">team</a>
@@ -250,26 +251,25 @@ function createSparkle(event) {
   <a href="#contact">contact</a>
   <a href="/chat">AI chat →</a>
 
-
-<button
-  type="button"
-  className={`sky-toggle ${skyMode === 'sunset' ? 'is-night' : ''}`}
-  onClick={() =>
-    setSkyMode(previous =>
-      previous === 'day' ? 'sunset' : 'day'
-    )
-  }
-  aria-label="Toggle day and night"
-  aria-pressed={skyMode === 'sunset'}
->
-  <span className="toggle-stars">✦ ✧</span>
-  <span className="toggle-clouds">☁ ☁</span>
-  <span className="toggle-orb">
-    {skyMode === 'day' ? '☀' : '☾'}
-  </span>
-</button>
-
+  <button
+    type="button"
+    className={`sky-toggle ${skyMode === 'sunset' ? 'is-night' : ''}`}
+    onClick={() =>
+      setSkyMode(previous =>
+        previous === 'day' ? 'sunset' : 'day'
+      )
+    }
+    aria-label="Toggle day and night"
+    aria-pressed={skyMode === 'sunset'}
+  >
+    <span className="toggle-stars">✦ ✧</span>
+    <span className="toggle-clouds">☁ ☁</span>
+    <span className="toggle-orb">
+      {skyMode === 'day' ? '☀' : '☾'}
+    </span>
+  </button>
 </nav>
+
 
 
         <div className="sky-content">

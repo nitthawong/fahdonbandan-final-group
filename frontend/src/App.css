@@ -1497,3 +1497,70 @@ body[data-member="ping"] {
 .bot-message h6 {
   color: #2b2a4a;
 }
+
+/* Mobile layout fix — keep original navigation */
+@media (max-width: 768px) {
+  .sky-nav {
+    width: calc(100% - 24px);
+    max-width: 100%;
+    margin: 16px auto 0;
+    padding: 12px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+
+  .sky-nav a {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .sky-nav .sky-toggle {
+    flex: 0 0 100px;
+    width: 100px;
+    margin: 4px auto 0;
+  }
+}
+
+/* ===== Mobile Chat Scroll Fix ===== */
+@media (max-width: 768px) {
+  .chat-layout {
+    display: flex;
+    flex-direction: column;
+    height: 70dvh;
+    min-height: 480px;
+    overflow: hidden;
+  }
+
+  .chat-sidebar {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 140px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .chat-main {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  #chat-messages {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
