@@ -350,7 +350,10 @@ function createSparkle(event) {
         </p>
 
         <p className="contact-note">
-          Team email coming soon.
+         Email us at{' '}
+<a href="mailto:fahdonbandan@example.com">
+  fahdonbandan@example.com
+</a>
         </p>
       </section>
 
