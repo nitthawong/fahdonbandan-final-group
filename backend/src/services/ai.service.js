@@ -4,7 +4,6 @@ import path from "path";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// โหลดข้อมูล portfolio.json
 const portfolioPath = path.resolve("src/data/portfolio.json");
 const portfolioData = fs.readFileSync(portfolioPath, "utf-8");
 
@@ -14,24 +13,23 @@ async function getAvailableModel() {
   if (cachedModel) return cachedModel;
 
   const list = await groq.models.list();
-  // กรองเอาเฉพาะโมเดลสำหรับแชท (ตัดโมเดลเสียง whisper และระบบป้องกัน guard ออก)
+  // กรองเอาเฉพาะโมเดลแชทหลัก ตัดตัวเสียง/ป้องกัน/โมเดลตัวเล็ก และ qwen (ติด limit 1000 OTPM) ออก
   const chatModels = list.data.filter(
     (m) =>
       !m.id.includes("whisper") &&
       !m.id.includes("guard") &&
-      !m.id.includes("tts")
+      !m.id.includes("tts") &&
+      !m.id.includes("instant") &&
+      !m.id.includes("qwen")
   );
 
-  if (chatModels.length === 0) {
-    throw new Error("ไม่พบโมเดลที่เปิดใช้งานในบัญชี Groq นี้");
-  }
+  const pool = chatModels.length > 0 ? chatModels : list.data;
 
-  // เลือกตระกูล llama หรือ qwen หรือ gpt ก่อน หากไม่มีให้เอาตัวแรกที่บัญชีรองรับ
   const preferred =
-    chatModels.find((m) => m.id.includes("llama")) ||
-    chatModels.find((m) => m.id.includes("qwen")) ||
-    chatModels.find((m) => m.id.includes("gpt")) ||
-    chatModels[0];
+    pool.find((m) => m.id.includes("70b")) ||
+    pool.find((m) => m.id.includes("gpt")) ||
+    pool.find((m) => m.id.includes("llama")) ||
+    pool[0];
 
   cachedModel = preferred.id;
   console.log("Using Groq Model:", cachedModel);
@@ -41,7 +39,6 @@ async function getAvailableModel() {
 export async function askAI(messages) {
   const lastMsg = messages[messages.length - 1]?.content?.trim().toLowerCase() || "";
 
-  // 1. ตอบแบบมีแพทเทิร์น (Rule-based)
   if (lastMsg === "สวัสดี" || lastMsg === "hello" || lastMsg === "hi") {
     return "สวัสดีครับ! ผมคือผู้ช่วย AI ของทีมฟ้าดลบันดาล สอบถามข้อมูลสมาชิก ทักษะ หรือโปรเจกต์ของทีมได้เลยครับ";
   }
@@ -51,15 +48,22 @@ export async function askAI(messages) {
     return `สามารถดูโค้ดและติดตามผลงานของทีมฟ้าดลบันดาลได้ที่ GitHub: ${data.group.contact.github}`;
   }
 
-  // 2. ดึงชื่อโมเดลที่บัญชีใช้งานได้จริง แล้วถามตอบจาก portfolio.json
   const modelId = await getAvailableModel();
 
   const response = await groq.chat.completions.create({
     model: modelId,
+    temperature: 0.3,
+    max_tokens: 500, // จำกัดความยาวคำตอบไม่ให้เกินโควตา Free Tier
     messages: [
       {
         role: "system",
-        content: `คุณคือผู้ช่วยตอบคำถามของทีม "ฟ้าดลบันดาล" จงตอบคำถามโดยอ้างอิงจากข้อมูล JSON ต่อไปนี้เท่านั้น ห้ามแต่งเรื่องเพิ่ม ตอบให้กระชับ เป็นมิตร และใช้ภาษาเดียวกับที่ผู้ใช้ถาม:\n${portfolioData}`,
+        content: `คุณคือผู้ช่วยตอบคำถามของทีม "ฟ้าดลบันดาล" จงตอบคำถามโดยอ้างอิงจากข้อมูล JSON ต่อไปนี้เท่านั้น ห้ามแต่งเรื่องเพิ่ม
+กฎการจัดรูปแบบข้อความ (สำคัญมาก):
+- ห้ามใช้เครื่องหมายดอกจัน (**) หรือสัญลักษณ์ Markdown ใดๆ เด็ดขาด ให้ตอบเป็นข้อความธรรมดาที่สะอาดตา
+- หากมีหลายข้อ ให้ขึ้นบรรทัดใหม่และใช้ขีด (-) นำหน้าแต่ละข้อ
+- ตอบให้กระชับ เป็นมิตร และใช้ภาษาเดียวกับที่ผู้ใช้ถาม
+
+ข้อมูลทีม:\n${portfolioData}`,
       },
       ...messages.map((m) => ({
         role: m.role === "model" ? "assistant" : m.role,
@@ -68,5 +72,6 @@ export async function askAI(messages) {
     ],
   });
 
-  return response.choices[0]?.message?.content || "ขออภัย ไม่สามารถประมวลผลคำตอบได้";
+  const rawReply = response.choices[0]?.message?.content || "ขออภัย ไม่สามารถประมวลผลคำตอบได้";
+  return rawReply.replace(/\*\*/g, "").replace(/^\*\s/gm, "- ");
 }
