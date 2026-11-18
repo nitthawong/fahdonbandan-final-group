@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import DragonMascot from './DragonMascot'
 import './App.css'
 
 const STORAGE_KEY = 'ourteam-chats'
@@ -84,6 +85,14 @@ function Chat() {
 
   const { chats, activeId } = chatState
   const activeChat = chats.find(chat => chat.id === activeId)
+  let mascotState = 'idle'
+  if (loadingChatId === activeId) {
+    mascotState = 'thinking'
+  } else if (error?.chatId === activeId) {
+    mascotState = 'limit'
+  } else if (activeChat?.messages.length > 1 && activeChat.messages.at(-1).sender === 'bot') {
+    mascotState = 'done'
+  }
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(chats))
@@ -270,7 +279,7 @@ function Chat() {
 
       <main className="chat-page">
         <div className="chat-intro">
-          <div className="bot-icon">✦</div>
+          <DragonMascot state={mascotState} />
 
           <h1>
             <span className="sparkle">✦</span>
