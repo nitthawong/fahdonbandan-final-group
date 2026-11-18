@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const SETTINGS_KEY = 'fahdonbandan:frog-settings'
 const MAX_NAME_LENGTH = 24
 const DEFAULT_NAME = 'Drago'
+const colors = { orange: 'Orange', yellow: 'Yellow', white: 'White' }
+const DRAG_MARGIN = 8
+const ARROW_OFFSETS = {
+  ArrowLeft: [-16, 0],
+  ArrowRight: [16, 0],
+  ArrowUp: [0, -16],
+  ArrowDown: [0, 16],
+}
 const moods = {
   auto: 'Automatic',
   idle: 'Relaxed',
@@ -18,9 +26,10 @@ function readSettings() {
     return {
       name: typeof saved?.name === 'string' ? saved.name.slice(0, MAX_NAME_LENGTH) : '',
       mood: Object.hasOwn(moods, saved?.mood) ? saved.mood : 'auto',
+      color: Object.hasOwn(colors, saved?.color) ? saved.color : 'orange',
     }
   } catch {
-    return { name: '', mood: 'auto' }
+    return { name: '', mood: 'auto', color: 'orange' }
   }
 }
 
@@ -31,8 +40,21 @@ const labels = {
   limit: 'Reply unavailable',
 }
 
+function fitOnScreen(x, y, board) {
+  const viewport = document.documentElement
+  return {
+    x: Math.max(DRAG_MARGIN, Math.min(x, viewport.clientWidth - board.width - DRAG_MARGIN)),
+    y: Math.max(DRAG_MARGIN, Math.min(y, viewport.clientHeight - board.height - DRAG_MARGIN)),
+  }
+}
+
 export default function DragonMascot({ state }) {
   const [settings, setSettings] = useState(readSettings)
+  const [position, setPosition] = useState(null)
+  const [dragging, setDragging] = useState(false)
+  const figure = useRef(null)
+  const handle = useRef(null)
+  const press = useRef(null)
   const name = settings.name.trim() || DEFAULT_NAME
   const hasRequestStatus = state === 'thinking' || state === 'limit'
   const pose = hasRequestStatus || settings.mood === 'auto' ? state : settings.mood
@@ -45,23 +67,129 @@ export default function DragonMascot({ state }) {
     }
   }, [settings])
 
+  useEffect(() => {
+    const element = figure.current
+
+    function keepOnScreen() {
+      const bounds = element.getBoundingClientRect()
+      setPosition(previous => {
+        if (!previous) return previous
+        const next = fitOnScreen(previous.x, previous.y, bounds)
+        return next.x === previous.x && next.y === previous.y ? previous : { ...previous, ...next }
+      })
+    }
+
+    window.addEventListener('resize', keepOnScreen)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(keepOnScreen)
+    observer?.observe(element)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', keepOnScreen)
+    }
+  }, [])
+
+  function startDrag(event) {
+    if (!event.isPrimary || event.button !== 0) return
+    const bounds = figure.current.getBoundingClientRect()
+    press.current = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      bounds,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function moveDrag(event) {
+    const active = press.current
+    if (active?.id !== event.pointerId) return
+
+    const dx = event.clientX - active.x
+    const dy = event.clientY - active.y
+    if (!active.moved && Math.hypot(dx, dy) < 5) return
+
+    active.moved = true
+    setDragging(true)
+    const { bounds } = active
+    setPosition(previous => ({
+      ...fitOnScreen(bounds.left + dx, bounds.top + dy, bounds),
+      dockHeight: previous?.dockHeight ?? bounds.height,
+    }))
+  }
+
+  function stopDrag(event) {
+    if (press.current?.id !== event.pointerId) return
+    press.current = null
+    setDragging(false)
+  }
+
+  function returnToDock() {
+    setPosition(null)
+    handle.current?.focus({ preventScroll: true })
+  }
+
+  function moveWithKeys(event) {
+    if (position && (event.key === 'Home' || event.key === 'Escape')) {
+      event.preventDefault()
+      returnToDock()
+      return
+    }
+    if (!Object.hasOwn(ARROW_OFFSETS, event.key)) return
+    event.preventDefault()
+
+    const [dx, dy] = ARROW_OFFSETS[event.key]
+    const bounds = figure.current.getBoundingClientRect()
+    setPosition(previous => ({
+      ...fitOnScreen((previous?.x ?? bounds.left) + dx, (previous?.y ?? bounds.top) + dy, bounds),
+      dockHeight: previous?.dockHeight ?? bounds.height,
+    }))
+  }
+
   return (
     <div className="chat-mascot-control">
-      <figure className="chat-mascot" data-state={pose}>
-        <div className="chat-mascot-art" aria-hidden="true">
-          <span className="chat-mascot-pose">
-            <img className="chat-mascot-idle" src="/drago-idle.png" alt="" width="640" height="640" />
-            <img className="chat-mascot-atlas" src="/drago-expressions.webp" alt="" width="1024" height="1024" />
-          </span>
-          <span className="chat-mascot-emote">
-            {pose === 'thinking' ? '···' : pose === 'working' ? '✧' : pose === 'done' ? '✦' : pose === 'limit' ? '!' : ''}
-          </span>
-        </div>
-        <figcaption className="chat-mascot-tag">
-          <span className="chat-mascot-name">{name}</span>
-          <span className="chat-mascot-status">{labels[state]}</span>
-        </figcaption>
-      </figure>
+      <div className="chat-mascot-dock" style={position ? { minHeight: position.dockHeight } : undefined}>
+        {position && (
+          <button type="button" className="chat-mascot-return" onClick={returnToDock}>
+            Bring {name} back
+          </button>
+        )}
+        <figure
+          ref={figure}
+          className="chat-mascot"
+          data-state={pose}
+          data-color={settings.color}
+          data-floating={Boolean(position)}
+          data-dragging={dragging}
+          style={position ? { left: position.x, top: position.y } : undefined}
+        >
+          <button
+            ref={handle}
+            type="button"
+            className="chat-mascot-art"
+            aria-label={`Move ${name}. Drag or use arrow keys. Press Home to return.`}
+            title="Drag to move"
+            onPointerDown={startDrag}
+            onPointerMove={moveDrag}
+            onPointerUp={stopDrag}
+            onPointerCancel={stopDrag}
+            onLostPointerCapture={stopDrag}
+            onKeyDown={moveWithKeys}
+          >
+            <span className="chat-mascot-pose" aria-hidden="true">
+              <img className="chat-mascot-idle" src="/drago-idle.png" alt="" width="640" height="640" />
+              <img className="chat-mascot-atlas" src="/drago-expressions.webp" alt="" width="1024" height="1024" />
+            </span>
+            <span className="chat-mascot-emote" aria-hidden="true">
+              {pose === 'thinking' ? '···' : pose === 'working' ? '✧' : pose === 'done' ? '✦' : pose === 'limit' ? '!' : ''}
+            </span>
+          </button>
+          <figcaption className="chat-mascot-tag">
+            <span className="chat-mascot-name">{name}</span>
+            <span className="chat-mascot-status">{labels[state]}</span>
+          </figcaption>
+        </figure>
+      </div>
 
       <details className="chat-mascot-settings">
         <summary>Customize mascot</summary>
@@ -89,6 +217,20 @@ export default function DragonMascot({ state }) {
               }}
             >
               {Object.entries(moods).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Color</span>
+            <select
+              value={settings.color}
+              onChange={event => {
+                const color = event.target.value
+                setSettings(previous => ({ ...previous, color }))
+              }}
+            >
+              {Object.entries(colors).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
