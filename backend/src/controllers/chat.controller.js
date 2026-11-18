@@ -9,6 +9,10 @@ export async function sendMessage(req, res) {
     return res.status(400).json({ error: "sessionId และ message จำเป็นต้องมี" });
   }
 
+  if (message.length > 1000) {
+    return res.status(400).json({ error: "ข้อความยาวเกินไป (สูงสุด 1,000 ตัวอักษร)" });
+  }
+
   try {
     // ดึงประวัติเดิม 20 ข้อความล่าสุด เพื่อให้ AI จำบทสนทนาได้
     const { rows } = await pool.query(
@@ -44,5 +48,16 @@ export async function getHistory(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "ดึงประวัติไม่สำเร็จ" });
+  }
+}
+
+// DELETE /api/chat/history/:sessionId
+export async function deleteHistory(req, res) {
+  try {
+    await pool.query("DELETE FROM messages WHERE session_id = $1", [req.params.sessionId]);
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ลบประวัติไม่สำเร็จ" });
   }
 }

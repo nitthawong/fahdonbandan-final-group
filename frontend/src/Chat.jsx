@@ -5,14 +5,20 @@ import './App.css'
 
 const STORAGE_KEY = 'ourteam-chats'
 const ACTIVE_KEY = 'ourteam-active-chat'
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_URL =
+  import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`
+
+function makeChatId() {
+  return globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 const greeting =
   "Hello! I'm the ฟ้าดลบันดาล AI Assistant. How can I help you today?"
 
 function makeChat() {
   return {
-    id: crypto.randomUUID(),
+    id: makeChatId(),
     title: 'New Chat',
     messages: [{ sender: 'bot', text: greeting }]
   }
@@ -114,6 +120,12 @@ function Chat() {
     closeHistory()
   }
 
+  function deleteRemote(id) {
+    fetch(`${API_URL}/api/chat/history/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch(error => console.error('Could not delete remote chat history:', error))
+  }
+
   function renameChat(id) {
     const chat = chats.find(item => item.id === id)
     if (!chat) return
@@ -138,6 +150,7 @@ function Chat() {
 
     if (!window.confirm(`Delete "${chat.title}"?`)) return
 
+    deleteRemote(id)
     setChatState(previous => {
       const remaining = previous.chats.filter(item => item.id !== id)
 
@@ -161,6 +174,7 @@ function Chat() {
       return
     }
 
+    chats.forEach(chat => deleteRemote(chat.id))
     const fresh = makeChat()
     setChatState({ chats: [fresh], activeId: fresh.id })
     setInput('')
@@ -301,11 +315,6 @@ function Chat() {
                     className={
                       `history-item ${chat.id === activeId ? 'active' : ''}`
                     }
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}
                   >
                     <button
                       type="button"
@@ -323,7 +332,6 @@ function Chat() {
                       aria-label="Rename chat"
                       title="Rename chat"
                       onClick={() => renameChat(chat.id)}
-                      style={historyButtonStyle}
                     >
                       ✎
                     </button>
@@ -334,7 +342,7 @@ function Chat() {
                       aria-label="Delete chat"
                       title="Delete chat"
                       onClick={() => deleteChat(chat.id)}
-                      style={historyButtonStyle}
+                      disabled={loadingChatId === chat.id}
                     >
                       ×
                     </button>
@@ -346,16 +354,7 @@ function Chat() {
                 id="clear-all-btn"
                 type="button"
                 onClick={clearAllChats}
-                style={{
-                  marginTop: '12px',
-                  width: '100%',
-                  padding: '9px',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  background: '#fffaf5',
-                  color: '#2b2a4a',
-                  border: '1px solid #2b2a4a'
-                }}
+                disabled={loadingChatId !== null}
               >
                 🗑 Clear All History
               </button>
@@ -440,15 +439,5 @@ function Chat() {
   )
 }
 
-const historyButtonStyle = {
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  fontSize: '17px',
-  color: '#2b2a4a',
-  padding: '2px 5px',
-  boxShadow: 'none',
-  flexShrink: 0
-}
 
 export default Chat
