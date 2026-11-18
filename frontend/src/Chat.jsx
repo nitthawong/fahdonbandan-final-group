@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import FrogMascot from './FrogMascot'
+import DragonMascot from './DragonMascot'
 import './App.css'
 
 const STORAGE_KEY = 'ourteam-chats'
@@ -279,7 +279,7 @@ function Chat() {
 
       <main className="chat-page">
         <div className="chat-intro">
-          <FrogMascot state={mascotState} />
+          <DragonMascot state={mascotState} />
 
           <h1>
             <span className="sparkle">✦</span>

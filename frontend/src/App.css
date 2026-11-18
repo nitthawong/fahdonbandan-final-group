@@ -999,11 +999,11 @@ footer {
   place-items: center;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 58%, #dceebe, transparent 68%);
+  background: radial-gradient(ellipse at 50% 58%, #ffe1ba, transparent 68%);
 }
 
 :root[data-sky-mode="sunset"] .chat-mascot-art {
-  background: radial-gradient(ellipse at 50% 58%, #e7d1f4, transparent 68%);
+  background: radial-gradient(ellipse at 50% 58%, #f1cfde, transparent 68%);
 }
 
 .chat-mascot-art canvas {
@@ -1016,8 +1016,35 @@ footer {
 }
 
 .chat-mascot-fallback {
-  font-size: 58px;
-  line-height: 1;
+  position: relative;
+  display: block;
+  width: 63%;
+  aspect-ratio: 1.25;
+  background: linear-gradient(#ffb351, #fa8938 58%, #ffe4a6 59%, #ffe4a6);
+  border-radius: 42% 42% 36% 36%;
+  clip-path: polygon(6% 28%, 16% 11%, 35% 3%, 65% 3%, 84% 11%, 94% 28%, 100% 45%, 94% 51%, 100% 61%, 89% 66%, 91% 79%, 79% 79%, 76% 92%, 64% 90%, 61% 97%, 39% 97%, 36% 90%, 24% 92%, 21% 79%, 9% 79%, 11% 66%, 0 61%, 6% 51%, 0 45%);
+}
+
+.chat-mascot-fallback::before,
+.chat-mascot-fallback::after {
+  position: absolute;
+  top: 34%;
+  width: 10%;
+  height: 19%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0 12%, transparent 15%), #402519;
+  content: '';
+}
+
+.chat-mascot-fallback::before { left: 26%; }
+.chat-mascot-fallback::after { right: 26%; }
+
+.chat-mascot-fallback i {
+  position: absolute;
+  inset: 49% 34% auto;
+  height: 20%;
+  border-bottom: 2px solid #7a3b25;
+  border-radius: 50%;
 }
 
 .chat-mascot[data-ready="true"] canvas {
@@ -1994,10 +2021,6 @@ body[data-member="ping"] {
   .chat-mascot {
     width: 110px;
     margin-bottom: 8px;
-  }
-
-  .chat-mascot-fallback {
-    font-size: 46px;
   }
 
   .chat-mascot-tag {

@@ -2,24 +2,8 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-/**
- * Frogurt, a little 3D frog mascot with a status pill.
- *
- * He is a real mesh, matte and soft-touch, lit by a studio environment in
- * three.js. His shape is a distance field (a body, two eye domes, a flat
- * seat) meshed once in code by shooting a ray from his middle through every
- * vertex of a fine sphere; its normals come from the field, so he is smooth
- * all over. No model file, no image.
- *
- * - idle: breathes, blinks, looks around
- * - thinking: squints up and away while thought bubbles rise
- * - working: puts his glasses on and follows a fly buzzing round his head
- * - done: one happy hop, then a swarm of little flies circles him
- * - limit: startled, eyes wide, goes pale, shakes and sweats
- *
- * Under him a big liquid-glass pill names him and opens to say what he is
- * doing. He pauses off screen and stands still under reduced motion.
- */
+// Adapted from the supplied Frogurt scene. The animation controls are shared
+// across poses; the head, muzzle, and beard are built from procedural geometry.
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const smooth = (a, b, v) => {
@@ -40,16 +24,12 @@ const ellipsoid = (x, y, z, rx, ry, rz) => {
   return (k0 * (k0 - 1)) / Math.max(k1, 1e-6);
 };
 
-/** Where his eye domes sit. */
-const DOME = { x: 0.47, y: 0.6, z: 0.2, r: 0.37 };
-/** His seat: the flat he sits on. */
 const SEAT = -0.6;
 
 function field(x, y, z) {
-  let d = ellipsoid(x, y, z, 1.0, 0.8, 0.86);
-  d = smin(d, Math.hypot(x - DOME.x, y - DOME.y, z - DOME.z) - DOME.r, 0.24);
-  d = smin(d, Math.hypot(x + DOME.x, y - DOME.y, z - DOME.z) - DOME.r, 0.24);
-  return smax(d, -(y - SEAT), 0.2);
+  const skull = ellipsoid(x, y - 0.035, z, 1.02, 0.69, 0.78);
+  const muzzle = ellipsoid(x, y + 0.22, z - 0.51, 0.68, 0.38, 0.46);
+  return smax(smin(skull, muzzle, 0.22), -(y - SEAT), 0.16);
 }
 
 function normalAt(x, y, z) {
@@ -73,13 +53,14 @@ function hit(origin, dir) {
   return origin.clone();
 }
 
-/** Built once and shared by every frog on the page. */
-let shared= null;
+/** Meshes shared by all instances of the mascot. */
+let shared = null;
 
-function build()         {
-  const top = new THREE.Color("#e4f78c");
-  const mid = new THREE.Color("#a9d64a");
-  const low = new THREE.Color("#5f9a24");
+function build() {
+  const top = new THREE.Color("#ffa741");
+  const mid = new THREE.Color("#f77b29");
+  const low = new THREE.Color("#cd5727");
+  const beard = new THREE.Color("#ffe8ae");
 
   // Body: a fine sphere, each vertex pushed out along its ray to his surface.
   const centre = new THREE.Vector3(0, 0.1, 0);
@@ -102,17 +83,22 @@ function build()         {
     pos.setXYZ(i, p.x, p.y, p.z);
     const n = normalAt(p.x, p.y, p.z);
     nor.setXYZ(i, n.x, n.y, n.z);
-    // Lit lime on top, deep green down his sides and under him.
+    // Peach-gold on top, darker orange beneath the chin.
     const t = clamp((p.y - SEAT) / 1.55, 0, 1);
     if (t > 0.45) c.copy(mid).lerp(top, smooth(0.45, 1, t));
     else c.copy(low).lerp(mid, smooth(0, 0.45, t));
+    // Wrap the cream beard around the front and leave an uneven scale edge.
+    const beardLine = -0.205 - 0.09 * Math.abs(p.x) + 0.018 * Math.cos(p.x * 35);
+    const beardMask = (1 - smooth(beardLine - 0.035, beardLine + 0.02, p.y))
+      * smooth(-0.03, 0.22, p.z);
+    c.lerp(beard, beardMask);
     colors.set([c.r, c.g, c.b], i * 3);
   }
   body.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   body.deleteAttribute("uv");
   body.computeBoundingSphere();
 
-  // An eye: Sparky's tall pill, flatter at top and bottom than an oval.
+  // Soft oval eyes for the dragon’s expressions.
   let eye= new THREE.SphereGeometry(1, 48, 32);
   const ep = eye.attributes.position;
   for (let i = 0; i < ep.count; i++) {
@@ -124,7 +110,7 @@ function build()         {
       x *= f;
       y *= f;
     }
-    ep.setXYZ(i, x * 0.1, y * 0.175, ep.getZ(i) * 0.058);
+    ep.setXYZ(i, x * 0.142, y * 0.183, ep.getZ(i) * 0.058);
   }
   eye.deleteAttribute("uv");
   eye.deleteAttribute("normal");
@@ -178,13 +164,34 @@ function build()         {
   const drop = new THREE.LatheGeometry(profile, 32);
   drop.computeVertexNormals();
 
-  // Each eye on the front of its dome, a little out and down from its top.
-  const eyes = [1, -1].map((side) => {
-    const d = new THREE.Vector3(0.22 * side, -0.05, 1).normalize();
-    const domeCentre = new THREE.Vector3(DOME.x * side, DOME.y, DOME.z);
-    const p = hit(domeCentre.clone().addScaledVector(d, 1.5), d.clone().negate());
-    return { position: p, normal: normalAt(p.x, p.y, p.z) };
+  function front(x, y) {
+    return hit(new THREE.Vector3(x, y, 1.6), new THREE.Vector3(0, 0, -1));
+  }
+
+  const eyes = [1, -1].map(side => {
+    const position = front(side * 0.49, 0.22);
+    return { position, normal: normalAt(position.x, position.y, position.z) };
   });
+
+  const smilePoints = [-0.44, -0.28, 0, 0.28, 0.44].map(x => {
+    const point = front(x, -0.33 + 0.6 * x * x);
+    point.z += 0.013;
+    return point;
+  });
+  const smile = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(smilePoints), 36, 0.019, 8, false);
+
+  const spikeProfile = [
+    new THREE.Vector2(0, -0.045),
+    new THREE.Vector2(0.104, -0.032),
+    new THREE.Vector2(0.127, 0.015),
+    new THREE.Vector2(0.096, 0.092),
+    new THREE.Vector2(0.039, 0.205),
+    new THREE.Vector2(0.015, 0.229),
+    new THREE.Vector2(0, 0.235),
+  ];
+  const spike = new THREE.LatheGeometry(spikeProfile, 20);
+  const nostrils = [-1, 1].map(side => front(side * 0.15, -0.126));
+  const blush = [-1, 1].map(side => front(side * 0.64, -0.113));
 
   // The shadow under him: a soft round, darker at its middle.
   const canvas = document.createElement("canvas");
@@ -199,7 +206,7 @@ function build()         {
   g.fillRect(0, 0, 128, 128);
   const shadow = new THREE.CanvasTexture(canvas);
 
-  return { body, eye, happy, lensRim, lens, temple, sphere, drop, eyes, shadow };
+  return { body, eye, happy, lensRim, lens, temple, sphere, drop, eyes, shadow, smile, spike, nostrils, blush };
 }
 
 // ---------------------------------------------------------------- motion
@@ -254,7 +261,7 @@ const swarmPath = (t, i, out) => {
 
 // ---------------------------------------------------------------- mount
 
-export function mountFrog(canvas, initial)                    {
+export function mountDragon(canvas, initial) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "low-power" });
@@ -284,12 +291,12 @@ export function mountFrog(canvas, initial)                    {
 
   const key = new THREE.DirectionalLight(0xffffff, 1.5);
   key.position.set(-2.2, 3.2, 4);
-  const rim = new THREE.DirectionalLight(0xf2ffd0, 1.6);
+  const rim = new THREE.DirectionalLight(0xffd1a4, 1.45);
   rim.position.set(2.5, 1.5, -3);
-  const fill = new THREE.HemisphereLight(0xffffff, 0x3a5a1a, 0.35);
+  const fill = new THREE.HemisphereLight(0xffffff, 0x6c3426, 0.4);
   scene.add(key, rim, fill);
 
-  // Materials: his own, so each frog can go pale on his own.
+  // Materials: his own, so each dragon can go pale on his own.
   const skin = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
     // Matte, soft-touch: a rough surface with a velvet sheen at its edges
@@ -298,7 +305,7 @@ export function mountFrog(canvas, initial)                    {
     clearcoat: 0.12,
     clearcoatRoughness: 0.6,
     sheen: 0.9,
-    sheenColor: new THREE.Color("#eefcb4"),
+    sheenColor: new THREE.Color("#ffe4bb"),
     sheenRoughness: 0.75,
   });
   const ink = new THREE.MeshPhysicalMaterial({ color: "#0a0c09", roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04 });
@@ -312,7 +319,7 @@ export function mountFrog(canvas, initial)                    {
   const bug = new THREE.MeshPhysicalMaterial({ color: "#20242b", roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.1 });
   const shade = new THREE.MeshBasicMaterial({ map: S.shadow, transparent: true, depthWrite: false });
 
-  // The scene: the frog sits on a pivot at his seat, so he squashes from it.
+  // The scene: the head sits on a pivot at his seat, so he squashes from it.
   const root = new THREE.Group();
   scene.add(root);
   const shadowPlane = new THREE.PlaneGeometry(2.6, 2.6);
@@ -323,26 +330,70 @@ export function mountFrog(canvas, initial)                    {
 
   const pivot = new THREE.Group();
   root.add(pivot);
-  const frog = new THREE.Group();
-  frog.position.y = -SEAT;
-  pivot.add(frog);
-  frog.add(new THREE.Mesh(S.body, skin));
+  const head = new THREE.Group();
+  head.position.y = -SEAT;
+  pivot.add(head);
+  head.add(new THREE.Mesh(S.body, skin));
+
+  const beardMaterial = new THREE.MeshStandardMaterial({ color: "#db6435", roughness: 0.78 });
+  const chinScaleMaterial = new THREE.MeshStandardMaterial({ color: "#f9ce83", roughness: 0.82 });
+  const cheekMaterial = new THREE.MeshStandardMaterial({ color: "#fb906f", roughness: 0.86 });
+  const mouthMaterial = new THREE.MeshStandardMaterial({ color: "#713728", roughness: 0.85 });
+  head.add(new THREE.Mesh(S.smile, mouthMaterial));
+
+  function addFaceDots(points, material, size) {
+    for (const point of points) {
+      const dot = new THREE.Mesh(S.sphere, material);
+      dot.position.copy(point);
+      dot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normalAt(point.x, point.y, point.z));
+      dot.scale.set(...size);
+      head.add(dot);
+    }
+  }
+  addFaceDots(S.nostrils, mouthMaterial, [0.03, 0.02, 0.012]);
+  addFaceDots(S.blush, cheekMaterial, [0.115, 0.053, 0.017]);
+
+  // The tapered cheek and jaw scales give a bearded dragon its silhouette.
+  const scaleUp = new THREE.Vector3(0, 1, 0);
+  for (const side of [-1, 1]) {
+    const sites = [
+      [0.83, 0.03, 0.28, 1, 0.05, 0.1, 0.88],
+      [0.84, -0.11, 0.29, 1, -0.32, 0.1, 1.04],
+      [0.79, -0.27, 0.34, 0.86, -0.58, 0.2, 1],
+      [0.65, -0.4, 0.43, 0.6, -0.81, 0.18, 0.85],
+      [0.49, -0.5, 0.48, 0.43, -0.98, 0.15, 0.72],
+      [0.28, -0.54, 0.49, 0.23, -1, 0.22, 0.6],
+    ];
+    for (const [x, y, z, dx, dy, dz, size] of sites) {
+      const scale = new THREE.Mesh(S.spike, y < -0.22 ? chinScaleMaterial : beardMaterial);
+      scale.position.set(x * side, y, z);
+      scale.quaternion.setFromUnitVectors(scaleUp, new THREE.Vector3(dx * side, dy, dz).normalize());
+      scale.scale.setScalar(size);
+      head.add(scale);
+    }
+  }
 
   const eyes = S.eyes.map((seat, i) => {
     const anchor = new THREE.Group();
     anchor.position.copy(seat.position).addScaledVector(seat.normal, -0.018);
     anchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), seat.normal);
-    // Each leans out a touch at the top, as Sparky's do.
+    // Each leans out a touch at the top, for an expressive silhouette.
     anchor.rotateZ(i === 0 ? -0.05 : 0.05);
     const ball = new THREE.Mesh(S.eye, ink);
+    for (const [x, y, z, size] of [[-0.037, 0.055, 0.059, 0.029], [0.021, -0.05, 0.061, 0.012]]) {
+      const glint = new THREE.Mesh(S.sphere, pearl);
+      glint.position.set(x, y, z);
+      glint.scale.set(size * 0.78, size, size * 0.35);
+      ball.add(glint);
+    }
     const happy = new THREE.Mesh(S.happy, ink);
     anchor.add(ball, happy);
-    frog.add(anchor);
+    head.add(anchor);
     return { ball, happy };
   });
 
   const glasses = new THREE.Group();
-  frog.add(glasses);
+  head.add(glasses);
   const lenses = S.eyes.map((seat, i) => {
     const lensGroup = new THREE.Group();
     lensGroup.position.copy(seat.position).addScaledVector(seat.normal, 0.11);
@@ -420,7 +471,7 @@ export function mountFrog(canvas, initial)                    {
 
   const sweat = new THREE.Mesh(S.drop, water);
   sweat.visible = false;
-  frog.add(sweat);
+  head.add(sweat);
 
   // ------------------------------------------------------------ animation
 
@@ -717,7 +768,7 @@ export function mountFrog(canvas, initial)                    {
       canvas.removeEventListener("pointermove", onPointer);
       canvas.removeEventListener("pointerleave", onLeave);
       motion?.removeEventListener("change", onMotion);
-      for (const m of [skin, ink, frame, glass, pearl, water, wing, bug, shade]) m.dispose();
+      for (const m of [skin, ink, frame, glass, pearl, water, wing, bug, shade, beardMaterial, chinScaleMaterial, cheekMaterial, mouthMaterial]) m.dispose();
       shadowPlane.dispose();
       bridgeGeometry.dispose();
       environment.dispose();

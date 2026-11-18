@@ -30,12 +30,12 @@ const labels = {
   limit: 'Reply unavailable',
 }
 
-export default function FrogMascot({ state }) {
+export default function DragonMascot({ state }) {
   const canvasRef = useRef(null)
   const sceneRef = useRef(null)
   const [settings, setSettings] = useState(readSettings)
   const [ready, setReady] = useState(false)
-  const name = settings.name.trim() || 'Frogurt'
+  const name = settings.name.trim() || 'Mango'
   const hasRequestStatus = state === 'thinking' || state === 'limit'
   const pose = hasRequestStatus || settings.mood === 'auto' ? state : settings.mood
   const stateRef = useRef(pose)
@@ -72,11 +72,11 @@ export default function FrogMascot({ state }) {
 
     canvas.addEventListener('webglcontextlost', useFallback)
 
-    import('./frogMascotScene')
-      .then(({ mountFrog }) => {
+    import('./dragonMascotScene')
+      .then(({ mountDragon }) => {
         if (disposed) return
 
-        const scene = mountFrog(canvas, {
+        const scene = mountDragon(canvas, {
           state: stateRef.current,
           animate: true,
           followPointer: true,
@@ -103,7 +103,7 @@ export default function FrogMascot({ state }) {
     <div className="chat-mascot-control">
       <figure className="chat-mascot" data-ready={ready} data-state={pose}>
         <div className="chat-mascot-art" aria-hidden="true">
-          <span className="chat-mascot-fallback">🐸</span>
+          <span className="chat-mascot-fallback"><i /></span>
           <canvas ref={canvasRef} />
         </div>
         <figcaption className="chat-mascot-tag">
@@ -113,7 +113,7 @@ export default function FrogMascot({ state }) {
       </figure>
 
       <details className="chat-mascot-settings">
-        <summary>Customize frog</summary>
+        <summary>Customize mascot</summary>
         <div className="chat-mascot-fields">
           <label>
             <span>Name</span>
@@ -121,7 +121,7 @@ export default function FrogMascot({ state }) {
               type="text"
               value={settings.name}
               maxLength={MAX_NAME_LENGTH}
-              placeholder="Frogurt"
+              placeholder="Mango"
               onChange={event => {
                 const nextName = event.target.value
                 setSettings(previous => ({ ...previous, name: nextName }))
