@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const SETTINGS_KEY = 'fahdonbandan:frog-settings'
 const MAX_NAME_LENGTH = 24
@@ -31,14 +31,10 @@ const labels = {
 }
 
 export default function DragonMascot({ state }) {
-  const canvasRef = useRef(null)
-  const sceneRef = useRef(null)
   const [settings, setSettings] = useState(readSettings)
-  const [ready, setReady] = useState(false)
   const name = settings.name.trim() || 'Mango'
   const hasRequestStatus = state === 'thinking' || state === 'limit'
   const pose = hasRequestStatus || settings.mood === 'auto' ? state : settings.mood
-  const stateRef = useRef(pose)
 
   useEffect(() => {
     try {
@@ -48,63 +44,14 @@ export default function DragonMascot({ state }) {
     }
   }, [settings])
 
-  useEffect(() => {
-    stateRef.current = pose
-    sceneRef.current?.update({ state: pose })
-  }, [pose])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    let disposed = false
-    let resizeObserver
-
-    function stopScene() {
-      resizeObserver?.disconnect()
-      sceneRef.current?.destroy()
-      sceneRef.current = null
-    }
-
-    function useFallback() {
-      if (disposed) return
-      stopScene()
-      setReady(false)
-    }
-
-    canvas.addEventListener('webglcontextlost', useFallback)
-
-    import('./dragonMascotScene')
-      .then(({ mountDragon }) => {
-        if (disposed) return
-
-        const scene = mountDragon(canvas, {
-          state: stateRef.current,
-          animate: true,
-          followPointer: true,
-        })
-        if (!scene) return
-
-        sceneRef.current = scene
-        if (typeof ResizeObserver !== 'undefined') {
-          resizeObserver = new ResizeObserver(() => scene.resize())
-          resizeObserver.observe(canvas)
-        }
-        setReady(true)
-      })
-      .catch(useFallback)
-
-    return () => {
-      disposed = true
-      canvas.removeEventListener('webglcontextlost', useFallback)
-      stopScene()
-    }
-  }, [])
-
   return (
     <div className="chat-mascot-control">
-      <figure className="chat-mascot" data-ready={ready} data-state={pose}>
+      <figure className="chat-mascot" data-state={pose}>
         <div className="chat-mascot-art" aria-hidden="true">
-          <span className="chat-mascot-fallback"><i /></span>
-          <canvas ref={canvasRef} />
+          <img src="/mango-bearded-dragon.png" alt="" width="640" height="640" />
+          <span className="chat-mascot-emote">
+            {pose === 'thinking' ? '···' : pose === 'working' ? '✧' : pose === 'done' ? '✦' : pose === 'limit' ? '!' : ''}
+          </span>
         </div>
         <figcaption className="chat-mascot-tag">
           <span className="chat-mascot-name">{name}</span>
