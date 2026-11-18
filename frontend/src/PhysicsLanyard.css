@@ -1,0 +1,444 @@
+.lanyard-wall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 880px;
+  margin: 40px auto 0;
+  position: relative;
+  padding-top: 8px;
+}
+
+.lanyard-wall::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(#7e849a, #4c536a 42%, #292e42);
+  box-shadow: 0 2px 4px #272e4630;
+}
+
+.lanyard-item {
+  --lanyard-color: var(--pink);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  padding-bottom: 24px;
+}
+
+.lanyard-item.blue {
+  --lanyard-color: var(--blue);
+}
+
+.lanyard-item.purple {
+  --lanyard-color: var(--purple);
+}
+
+.lanyard-item:focus-within {
+  z-index: 1;
+}
+
+.lanyard-item:has(.lanyard-flip:active) {
+  z-index: 2;
+}
+
+.lanyard-hanger {
+  display: grid;
+  justify-items: center;
+  width: min(200px, 100%);
+  transform-origin: top center;
+  transform: rotate(var(--strap-angle, 0rad));
+}
+
+.lanyard-strap {
+  width: 16px;
+  height: 88px;
+  margin-top: -2px;
+  border-radius: 2px 2px 4px 4px;
+  background:
+    linear-gradient(90deg, #0005, #fff2 24%, transparent 68%, #0005),
+    repeating-linear-gradient(0deg, #0002 0 1px, transparent 1px 3px),
+    var(--lanyard-color);
+  box-shadow: inset 1px 0 #fffa, inset -1px 0 #17182955, 1px 2px 3px #19274030;
+}
+
+.lanyard-card {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  perspective: 850px;
+  transform-origin: top center;
+  transform: perspective(760px)
+    rotateZ(var(--badge-angle, 0rad))
+    rotateY(var(--badge-yaw, 0rad))
+    rotateX(var(--badge-pitch, 0rad));
+}
+
+.lanyard-clip {
+  position: absolute;
+  z-index: 1;
+  top: -11px;
+  left: 50%;
+  width: 12px;
+  height: 22px;
+  transform: translateX(-50%);
+  border: 1px solid #727e8d;
+  border-radius: 4px 4px 6px 6px;
+  background: linear-gradient(100deg, #737c8a, #f6fbff 32%, #aeb8c5 64%, #6b7482);
+  box-shadow: 0 2px 3px #20283760;
+  pointer-events: none;
+}
+
+.lanyard-flip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.lanyard-flip:active {
+  cursor: grabbing;
+}
+
+.lanyard-inner {
+  position: relative;
+  height: 100%;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  transition: transform 0.55s;
+}
+
+.lanyard-card.is-flipped .lanyard-inner {
+  transform: rotateY(180deg);
+}
+
+.lanyard-front,
+.lanyard-back {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(144deg, #fff 5%, #fffcf6 52%, #e9eef4);
+  border: 1px solid #97a4ba;
+  border-radius: 13px;
+  box-shadow: inset 0 0 0 2px #ffffff8c, 0 2px 0 #8592a9, 2px 9px 16px #2639592c;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow-wrap: anywhere;
+}
+
+.lanyard-color {
+  height: 70px;
+  border-radius: 12px 12px 0 0;
+  background:
+    linear-gradient(127deg, #fff5, transparent 54%, #36355222),
+    var(--lanyard-color);
+}
+
+.lanyard-avatar {
+  position: relative;
+  width: 78px;
+  height: 90px;
+  margin: -27px auto 14px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #aab5c6, 0 3px 7px #29335426;
+}
+
+.lanyard-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lanyard-card h3 {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.lanyard-front h3 {
+  padding-inline: 8px;
+}
+
+.lanyard-front p {
+  margin: 6px 0 10px;
+  font-weight: 600;
+}
+
+.lanyard-front small {
+  padding-inline: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lanyard-back {
+  transform: rotateY(180deg);
+  padding: 25px 12px 12px;
+}
+
+.lanyard-back h3 {
+  margin-bottom: 6px;
+}
+
+.lanyard-back p {
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.lanyard-back strong {
+  color: var(--ink);
+}
+
+.lanyard-back .profile-link {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 7px 16px;
+  border: var(--border);
+  border-radius: 999px;
+  background: var(--lanyard-color);
+  color: var(--ink);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.lanyard-card.is-flipped .profile-link {
+  pointer-events: auto;
+}
+
+.lanyard-back .profile-link:hover {
+  background: var(--yellow);
+}
+
+@media (max-width: 680px) {
+  .lanyard-wall {
+    gap: clamp(6px, 2vw, 13px);
+    max-width: 520px;
+    margin-top: 18px;
+    padding-top: 6px;
+  }
+
+  .lanyard-wall::before {
+    height: 6px;
+  }
+
+  .lanyard-wall .lanyard-item {
+    padding-bottom: 8px;
+  }
+
+  .lanyard-wall .lanyard-strap {
+    width: 11px;
+    height: 36px;
+  }
+
+  .lanyard-wall .lanyard-card {
+    height: 220px;
+  }
+
+  .lanyard-wall .lanyard-clip {
+    top: -8px;
+    width: 9px;
+    height: 16px;
+  }
+
+  .lanyard-wall .lanyard-color {
+    height: 43px;
+  }
+
+  .lanyard-wall .lanyard-avatar {
+    width: min(58%, 64px);
+    height: clamp(54px, 15vw, 68px);
+    margin: -19px auto 9px;
+    border-width: 2px;
+  }
+
+  .lanyard-wall h3 {
+    padding-inline: 4px;
+    font-size: clamp(10px, 2.45vw, 14px);
+    line-height: 1.25;
+  }
+
+  .lanyard-wall .lanyard-front p {
+    margin: 6px 0 4px;
+    font-size: clamp(12px, 3.2vw, 15px);
+  }
+
+  .lanyard-wall .lanyard-front small {
+    display: block;
+    padding-inline: 4px;
+    font-size: clamp(11px, 2.65vw, 13px);
+    line-height: 1.3;
+  }
+
+  .lanyard-wall .lanyard-back {
+    padding: 15px 3px 6px;
+  }
+
+  .lanyard-wall .lanyard-back p {
+    margin-bottom: 3px;
+    font-size: clamp(10px, 2.55vw, 13px);
+    line-height: 1.25;
+  }
+
+  .lanyard-wall .lanyard-back .profile-link {
+    display: inline-grid;
+    place-content: center;
+    max-width: 100%;
+    min-height: 44px;
+    margin-top: 5px;
+    padding: 3px 5px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lanyard-inner {
+    transition: none;
+  }
+}
+
+.profile-pass {
+  min-width: 0;
+  text-align: center;
+}
+
+.profile-pass-help {
+  margin-top: 2px;
+  color: var(--muted);
+  font: 500 12px/1.5 var(--font-body);
+}
+
+.lanyard-item--profile {
+  --lanyard-color: var(--accent);
+  padding-bottom: 17px;
+}
+
+.lanyard-item--profile::before {
+  position: absolute;
+  top: -5px;
+  width: 24px;
+  height: 10px;
+  border: 1px solid #7f8a9d;
+  border-radius: 4px;
+  background: linear-gradient(#e9eef4, #a7b2c1 50%, #606c80);
+  box-shadow: 0 2px 5px #17253f38;
+  content: '';
+}
+
+.lanyard-item--profile .lanyard-hanger {
+  width: min(246px, 100%);
+}
+
+.lanyard-item--profile .lanyard-strap {
+  width: 22px;
+  height: 86px;
+}
+
+.lanyard-item--profile .lanyard-card {
+  height: 338px;
+}
+
+.lanyard-item--profile .lanyard-front,
+.lanyard-item--profile .lanyard-back {
+  overflow: hidden;
+  font-family: var(--font-body);
+  background:
+    repeating-linear-gradient(137deg, #6d83b409 0 1px, transparent 1px 7px),
+    linear-gradient(140deg, #fff 12%, #fcfaf5 52%, #dfe7f2);
+}
+
+.lanyard-item--profile .lanyard-front::after,
+.lanyard-item--profile .lanyard-back::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: var(--foil-opacity, 0);
+  background:
+    radial-gradient(ellipse at var(--foil-x, 50%) var(--foil-y, 30%), #fff 0%, #fff0 48%),
+    linear-gradient(var(--foil-angle, 135deg), #f8c9fb00 16%, #ffb4e0 32%, #c2f5ff 49%, #f3eeb4 64%, transparent 78%);
+  mix-blend-mode: soft-light;
+  transition: opacity 180ms ease-out;
+  pointer-events: none;
+  content: '';
+}
+
+.lanyard-item--profile .lanyard-color {
+  height: 90px;
+  padding-top: 20px;
+  color: var(--ink);
+}
+
+.lanyard-issuer {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.lanyard-item--profile .lanyard-avatar {
+  width: 90px;
+  height: 105px;
+  margin: -31px auto 13px;
+}
+
+.lanyard-item--profile h3 {
+  font: 700 16px/1.28 var(--font-body);
+  letter-spacing: 0.025em;
+}
+
+.lanyard-item--profile .lanyard-front p {
+  margin: 4px 0 1px;
+  font-size: 14px;
+}
+
+.lanyard-item--profile .lanyard-back {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding-inline: 18px;
+}
+
+.lanyard-card-id {
+  position: absolute;
+  inset: auto 13px 13px;
+  padding-top: 7px;
+  border-top: 1px solid #596b852d;
+  color: var(--muted);
+  font: 600 10px/1.35 ui-monospace, monospace;
+  letter-spacing: 0.13em;
+}
+
+@media (max-width: 750px) {
+  .profile-pass {
+    width: min(100%, 360px);
+    justify-self: center;
+  }
+
+  .lanyard-item--profile .lanyard-strap {
+    height: 60px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lanyard-item--profile .lanyard-front::after,
+  .lanyard-item--profile .lanyard-back::after {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .lanyard-flip {
+    touch-action: pan-y;
+  }
+
+  .lanyard-back .profile-link {
+    min-height: 44px;
+    align-content: center;
+  }
+}

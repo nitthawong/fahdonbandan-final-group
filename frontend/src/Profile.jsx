@@ -1,5 +1,5 @@
-
 import { useEffect } from 'react'
+import { MemberBadge } from './PhysicsLanyard'
 import './App.css'
 
 const members = {
@@ -9,7 +9,7 @@ const members = {
     role: 'Frontend Developer',
     photo: '/ham.jpg',
     about:
-      'My name is Arthittaya Ruaisap (Ham). I am an AI Engineering and Data Science student at Bangkok University.',
+      'My name is Arthittaya Ruaisap (Ham). I am the frontend developer for the ฟ้าดลบันดาล team.',
     tasks:
       'Designing the team Portfolio website, developing the Home and Team pages, creating member profiles, and building the AI Chat interface.',
     skills: [
@@ -63,7 +63,7 @@ const members = {
 function Profile() {
   const params = new URLSearchParams(window.location.search)
   const requestedKey = params.get('member') || 'ham'
-  const key = members[requestedKey] ? requestedKey : 'ham'
+  const key = Object.hasOwn(members, requestedKey) ? requestedKey : 'ham'
   const member = members[key]
 
   useEffect(() => {
@@ -81,13 +81,30 @@ function Profile() {
       </a>
 
       <div className="profile-layout">
-        <div className="profile-info">
+        <header className="profile-summary">
           <p className="profile-label">MEET OUR TEAM</p>
 
           <h1 id="profile-fullname">{member.fullName}</h1>
           <p id="profile-name">{member.name}</p>
           <h2 id="profile-role">{member.role}</h2>
+        </header>
 
+        <div className="profile-pass">
+          <MemberBadge
+            variant="profile"
+            member={{
+              id: key,
+              name: member.fullName,
+              nickname: member.name,
+              role: member.role,
+              image: member.photo,
+              work: member.project,
+            }}
+          />
+          <p className="profile-pass-help">Drag to swing · Click or tap to flip</p>
+        </div>
+
+        <div className="profile-info">
           <h3>About Me</h3>
           <p id="profile-about">{member.about}</p>
 
@@ -104,39 +121,10 @@ function Profile() {
           <h3>Project</h3>
           <p id="profile-project">{member.project}</p>
 
-          <h3>My Contribution</h3>
+          <h3 id="profile-contribution">My Contribution</h3>
           <p id="profile-project-details">
             {member.projectDetails}
           </p>
-        </div>
-
-        <div className="profile-badge">
-          <div className="badge-rope"></div>
-
-          <div className="badge-card">
-            <div className="badge-avatar" id="badge-avatar">
-              <img
-                src={member.photo}
-                alt={member.name}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                  display: 'block'
-                }}
-              />
-            </div>
-
-            <h2 id="badge-name">{member.fullName}</h2>
-            <p id="badge-nickname">{member.name}</p>
-            <p id="badge-role">{member.role}</p>
-
-            <div className="badge-barcode">
-              |||| ||| |||| |||
-            </div>
-            <small>ฟ้าดลบันดาล TEAM</small>
-          </div>
         </div>
       </div>
     </main>

@@ -8,17 +8,17 @@ const ACTIVE_KEY = 'ourteam-active-chat'
 const API_URL =
   import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`
 
-// crypto.randomUUID ใช้ได้เฉพาะ localhost/HTTPS -> เปิดผ่าน IP ในมือถือจะพัง จึงมี fallback
-const uid = () =>
-  globalThis.crypto?.randomUUID?.() ??
-  `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+function makeChatId() {
+  return globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 const greeting =
   "Hello! I'm the ฟ้าดลบันดาล AI Assistant. How can I help you today?"
 
 function makeChat() {
   return {
-    id: uid(),
+    id: makeChatId(),
     title: 'New Chat',
     messages: [{ sender: 'bot', text: greeting }]
   }
@@ -47,13 +47,39 @@ function loadChats() {
   }
 }
 
+function AssistantReply({ text, canCopy }) {
+  const [copyStatus, setCopyStatus] = useState('')
+
+  async function copyReply() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyStatus('Copied')
+    } catch {
+      setCopyStatus('Could not copy')
+    }
+  }
+
+  return (
+    <>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      {canCopy && (
+        <div className="chat-reply-actions">
+          <button type="button" onClick={copyReply}>Copy reply</button>
+          <span role="status">{copyStatus}</span>
+        </div>
+      )}
+    </>
+  )
+}
+
 function Chat() {
   const [chatState, setChatState] = useState(loadChats)
   const [input, setInput] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [loadingChatId, setLoadingChatId] = useState(null)
-  const [error, setError] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [error, setError] = useState(null)
   const messagesRef = useRef(null)
+  const historyToggleRef = useRef(null)
   const pendingRef = useRef(false)
 
   const { chats, activeId } = chatState
@@ -71,6 +97,12 @@ function Chat() {
     }
   }, [activeChat?.messages, loadingChatId])
 
+  function closeHistory() {
+    if (!historyOpen) return
+    setHistoryOpen(false)
+    historyToggleRef.current?.focus({ preventScroll: true })
+  }
+
   function createNewChat() {
     const chat = makeChat()
 
@@ -80,18 +112,18 @@ function Chat() {
     }))
 
     setInput('')
-    setSidebarOpen(false)
+    closeHistory()
   }
 
   function selectChat(id) {
     setChatState(previous => ({ ...previous, activeId: id }))
-    setSidebarOpen(false)
+    closeHistory()
   }
 
   function deleteRemote(id) {
     fetch(`${API_URL}/api/chat/history/${encodeURIComponent(id)}`, {
-      method: 'DELETE'
-    }).catch(() => {})
+      method: 'DELETE',
+    }).catch(error => console.error('Could not delete remote chat history:', error))
   }
 
   function renameChat(id) {
@@ -119,7 +151,6 @@ function Chat() {
     if (!window.confirm(`Delete "${chat.title}"?`)) return
 
     deleteRemote(id)
-
     setChatState(previous => {
       const remaining = previous.chats.filter(item => item.id !== id)
 
@@ -144,7 +175,6 @@ function Chat() {
     }
 
     chats.forEach(chat => deleteRemote(chat.id))
-
     const fresh = makeChat()
     setChatState({ chats: [fresh], activeId: fresh.id })
     setInput('')
@@ -156,7 +186,7 @@ function Chat() {
     if (!question || pendingRef.current) return
 
     pendingRef.current = true
-    setError('')
+    setError(null)
 
     const targetId = activeId
     setLoadingChatId(targetId)
@@ -216,7 +246,10 @@ function Chat() {
       }))
     } catch (err) {
       console.error('เชื่อมต่อ Backend ไม่สำเร็จ:', err)
-      setError(err.message || 'Something went wrong. Please try again.')
+      setError({
+        chatId: targetId,
+        message: err.message || 'Something went wrong. Please try again.',
+      })
     } finally {
       pendingRef.current = false
       setLoadingChatId(null)
@@ -252,108 +285,105 @@ function Chat() {
         </div>
 
         <div className="chat-layout">
-          <aside className={`chat-sidebar ${sidebarOpen ? 'is-open' : ''}`}>
-            <h3>Chat History</h3>
-
+          <aside className="chat-sidebar">
             <button
-              id="new-chat-btn"
               type="button"
-              onClick={createNewChat}
+              className="chat-history-toggle"
+              ref={historyToggleRef}
+              aria-expanded={historyOpen}
+              aria-controls="chat-history-panel"
+              onClick={() => setHistoryOpen(previous => !previous)}
             >
-              + New Chat
+              <span>Chat History</span>
+              <span aria-hidden="true">{historyOpen ? '−' : '+'}</span>
             </button>
+            <div id="chat-history-panel" data-open={historyOpen}>
+              <h3>Chat History</h3>
 
-            <div id="chat-history">
-              {chats.map(chat => (
-                <div
-                  key={chat.id}
-                  className={`history-item ${chat.id === activeId ? 'active' : ''}`}
-                >
-                  <button
-                    type="button"
-                    className="history-title"
-                    onClick={() => selectChat(chat.id)}
-                    title={chat.title}
-                  >
-                    {chat.title}
-                  </button>
+              <button
+                id="new-chat-btn"
+                type="button"
+                onClick={createNewChat}
+              >
+                + New Chat
+              </button>
 
-                  <button
-                    type="button"
-                    className="history-action"
-                    aria-label="Rename chat"
-                    title="Rename chat"
-                    onClick={() => renameChat(chat.id)}
+              <div id="chat-history">
+                {chats.map(chat => (
+                  <div
+                    key={chat.id}
+                    className={
+                      `history-item ${chat.id === activeId ? 'active' : ''}`
+                    }
                   >
-                    ✎
-                  </button>
+                    <button
+                      type="button"
+                      className="chat-history-title"
+                      aria-current={chat.id === activeId ? 'true' : undefined}
+                      onClick={() => selectChat(chat.id)}
+                      title={chat.title}
+                    >
+                      {chat.title}
+                    </button>
 
-                  <button
-                    type="button"
-                    className="history-action"
-                    aria-label="Delete chat"
-                    title="Delete chat"
-                    onClick={() => deleteChat(chat.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      className="chat-history-action"
+                      aria-label="Rename chat"
+                      title="Rename chat"
+                      onClick={() => renameChat(chat.id)}
+                    >
+                      ✎
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chat-history-action"
+                      aria-label="Delete chat"
+                      title="Delete chat"
+                      onClick={() => deleteChat(chat.id)}
+                      disabled={loadingChatId === chat.id}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                id="clear-all-btn"
+                type="button"
+                onClick={clearAllChats}
+                disabled={loadingChatId !== null}
+              >
+                🗑 Clear All History
+              </button>
             </div>
-
-            <button
-              id="clear-all-btn"
-              type="button"
-              onClick={clearAllChats}
-            >
-              🗑 Clear All History
-            </button>
           </aside>
 
           <div className="chat-main">
-            <button
-              type="button"
-              className="sidebar-toggle"
-              aria-expanded={sidebarOpen}
-              onClick={() => setSidebarOpen(open => !open)}
-            >
-              ☰ Chats
-            </button>
-
             <div id="chat-messages" ref={messagesRef}>
               {activeChat?.messages.map((message, index) => (
                 <div
-                  key={index}
-                  className={
-                    message.sender === 'user'
-                      ? 'user-message'
-                      : 'bot-message'
-                  }
+                  key={`${activeId}-${index}`}
+                  className={message.sender === 'user' ? 'user-message' : 'bot-message'}
                 >
-              
-  {message.sender === 'bot' ? (
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-      {message.text}
-    </ReactMarkdown>
-  ) : (
-    message.text
-  )}
-</div>
-))}
-{loadingChatId === activeId && (
-  <div className="bot-message typing-message" role="status">
-    <span className="typing-dots" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
-    </span>
-    <span>AI is typing...</span>
-  </div>
-)}
+                  {message.sender === 'bot' ? (
+                    <AssistantReply text={message.text} canCopy={index > 0} />
+                  ) : message.text}
+                </div>
+              ))}
 
-              {error && (
-                <p role="alert" style={{ color: '#b42318' }}>
-                  {error}
+              {loadingChatId === activeId && (
+                <div className="bot-message typing-message" role="status">
+                  <span className="chat-loading-stars" aria-hidden="true">✦ ✧ ✦</span>
+                  <span>Waiting for the AI reply…</span>
+                </div>
+              )}
+
+              {error?.chatId === activeId && (
+                <p className="chat-request-error" role="alert">
+                  {error.message}
                 </p>
               )}
             </div>
@@ -362,6 +392,7 @@ function Chat() {
               <input
                 type="text"
                 id="user-input"
+                aria-label="Your message"
                 placeholder="Type your message..."
                 value={input}
                 disabled={loadingChatId !== null}
