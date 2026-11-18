@@ -1,7 +1,12 @@
-import Chat from './Chat'
 import Profile from './Profile'
-import { useState, useRef } from 'react'
+import ContactGithub from './ContactGithub'
+import StarCursor from './StarCursor'
+import ProjectDemo from './ProjectDemo'
+import PhysicsLanyard from './PhysicsLanyard'
+import { lazy, Suspense, useLayoutEffect, useState } from 'react'
 import './App.css'
+
+const Chat = lazy(() => import('./Chat'))
 
 const members = [
   {
@@ -33,119 +38,17 @@ const members = [
   },
 ]
 
-function MemberCard({ member }) {
-  const [flipped, setFlipped] = useState(false)
+const SKY_MODE_KEY = 'fahdonbandan:sky-mode'
 
-  function tiltCard(event) {
-    if (event.pointerType === 'touch') return
-
-    const card = event.currentTarget
-    const rect = card.getBoundingClientRect()
-
-    const x = (event.clientX - rect.left) / rect.width
-    const y = (event.clientY - rect.top) / rect.height
-
-    const rotateY = (x - 0.5) * 36
-    const rotateX = (0.5 - y) * 36
-
-    card.style.setProperty('--tilt-x', `${rotateX}deg`)
-    card.style.setProperty('--tilt-y', `${rotateY}deg`)
+function readSkyMode() {
+  try {
+    return window.localStorage.getItem(SKY_MODE_KEY) === 'sunset' ? 'sunset' : 'day'
+  } catch {
+    return 'day'
   }
-
-  function resetTilt(event) {
-    const card = event.currentTarget
-    card.style.setProperty('--tilt-x', '0deg')
-    card.style.setProperty('--tilt-y', '0deg')
-  }
-
-  return (
-    <div className={`lanyard-item ${member.color}`}>
-      <div className="lanyard-strap"></div>
-      <div className="lanyard-ring"></div>
-
-      <div
-        className={`lanyard-card ${flipped ? 'is-flipped' : ''}`}
-        onPointerMove={tiltCard}
-        onPointerLeave={resetTilt}
-        tabIndex={0}
-        role="button"
-        aria-label={`Flip ${member.nickname}'s card`}
-        aria-pressed={flipped}
-        onClick={(event) => {
-          if (!event.target.closest('a')) {
-            setFlipped(previous => !previous)
-          }
-        }}
-        onKeyDown={(event) => {
-          if (
-            event.target.closest('a') ||
-            !['Enter', ' '].includes(event.key)
-          ) return
-
-          event.preventDefault()
-          setFlipped(previous => !previous)
-        }}
-      >
-        <div className="lanyard-inner">
-          <div className="lanyard-front">
-            <div className="lanyard-color"></div>
-
-            <div className="lanyard-avatar">
-              <img src={member.image} alt={member.nickname} />
-            </div>
-
-            <h3>{member.name}</h3>
-            <p>{member.nickname}</p>
-            <small>{member.role}</small>
-          </div>
-
-          <div className="lanyard-back">
-            <h3>{member.name}</h3>
-            <p>{member.nickname}</p>
-
-            <p><strong>Role</strong></p>
-            <p>{member.role}</p>
-
-            <p><strong>Work</strong></p>
-            <p>{member.work}</p>
-
-            <a
-              href={`/profile?member=${member.id}`}
-              className="profile-link"
-            >
-              View Profile →
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 }
 
-
-function App() {
-  const [skyMode, setSkyMode] = useState('day')
-  const sparkleId = useRef(0)
-  const [sparkles, setSparkles] = useState([])
-  const lastSparkleTime = useRef(0)
-
-function createSparkle(event) {
-  if (event.pointerType === 'touch') return
-
-  const now = Date.now()
-  if (now - lastSparkleTime.current < 80) return
-  lastSparkleTime.current = now
-
-  const rect = event.currentTarget.getBoundingClientRect()
-
-  const sparkle = {
-    id: sparkleId.current++,
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top
-  }
-
-  setSparkles(previous => [...previous.slice(-12), sparkle])
-}
+function App({ skyMode, onToggleSky }) {
   function moveClouds(event) {
     if (event.pointerType === 'touch') return
 
@@ -193,33 +96,11 @@ function createSparkle(event) {
     <>
       {/* Home */}
       <section
- className={`sky-hero ${skyMode === 'sunset' ? 'sunset' : ''}`}
-  id="home"
-  onPointerMove={event => {
-    moveClouds(event)
-    createSparkle(event)
-  }}
-  onPointerLeave={resetClouds}
->
-  <div className="sparkle-layer" aria-hidden="true">
-  {sparkles.map(sparkle => (
-    <span
-      key={sparkle.id}
-      className="mouse-sparkle"
-      style={{
-        left: sparkle.x,
-        top: sparkle.y
-      }}
-      onAnimationEnd={() => {
-        setSparkles(previous =>
-          previous.filter(item => item.id !== sparkle.id)
-        )
-      }}
-    >
-      ✦
-    </span>
-  ))}
-</div>
+        className={`sky-hero ${skyMode === 'sunset' ? 'sunset' : ''}`}
+        id="home"
+        onPointerMove={moveClouds}
+        onPointerLeave={resetClouds}
+      >
         <div className="cloud-layer" aria-hidden="true">
           {[1, 2, 3].map((number) => (
             <div
@@ -254,12 +135,8 @@ function createSparkle(event) {
   <button
     type="button"
     className={`sky-toggle ${skyMode === 'sunset' ? 'is-night' : ''}`}
-    onClick={() =>
-      setSkyMode(previous =>
-        previous === 'day' ? 'sunset' : 'day'
-      )
-    }
-    aria-label="Toggle day and night"
+    onClick={onToggleSky}
+    aria-label="Toggle sunset mode"
     aria-pressed={skyMode === 'sunset'}
   >
     <span className="toggle-stars">✦ ✧</span>
@@ -289,18 +166,10 @@ function createSparkle(event) {
         <p className="section-description">
           Meet the people behind ฟ้าดลบันดาล.
           <br />
-          Click a badge to flip it!
+          Drag a badge to swing it, or tap to flip it.
         </p>
 
-        <div className="lanyard-wall">
-          <div className="lanyard-rail"></div>
-
-          <div className="lanyard-container">
-            {members.map((member) => (
-              <MemberCard key={member.id} member={member} />
-            ))}
-          </div>
-        </div>
+        <PhysicsLanyard members={members} />
       </section>
 
       {/* Projects */}
@@ -333,6 +202,8 @@ function createSparkle(event) {
             ))}
           </div>
 
+          <ProjectDemo />
+
           <a href="/chat" className="project-button">
             Try AI Chat →
           </a>
@@ -355,6 +226,7 @@ function createSparkle(event) {
   fahdonbandan@example.com
 </a>
         </p>
+        <ContactGithub />
       </section>
 
       <footer>
@@ -365,15 +237,48 @@ function createSparkle(event) {
 }
 
 function Main() {
-  if (window.location.pathname === '/profile') {
-    return <Profile />
+  const [skyMode, setSkyMode] = useState(readSkyMode)
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.skyMode = skyMode
+  }, [skyMode])
+
+  function toggleSky() {
+    const next = skyMode === 'day' ? 'sunset' : 'day'
+    setSkyMode(next)
+
+    try {
+      window.localStorage.setItem(SKY_MODE_KEY, next)
+    } catch {
+      // The current page still changes when storage is unavailable.
+    }
   }
 
-  if (window.location.pathname === '/chat') {
-    return <Chat />
+  const pathname = window.location.pathname
+  let page = <App skyMode={skyMode} onToggleSky={toggleSky} />
+
+  if (pathname === '/profile') page = <Profile />
+  if (pathname === '/chat') {
+    page = (
+      <Suspense fallback={
+        <main className="chat-route-loading">
+          <div className="chat-route-status" role="status">
+            <span className="chat-loading-stars" aria-hidden="true">✦ ✧ ✦</span>
+            <span>Opening AI Chat…</span>
+          </div>
+        </main>
+      }>
+        <Chat />
+      </Suspense>
+    )
   }
 
-  return <App />
+  return (
+    <>
+      {page}
+      <StarCursor />
+    </>
+  )
 }
 
 export default Main

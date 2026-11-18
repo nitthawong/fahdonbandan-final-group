@@ -41,12 +41,39 @@ function loadChats() {
   }
 }
 
+function AssistantReply({ text, canCopy }) {
+  const [copyStatus, setCopyStatus] = useState('')
+
+  async function copyReply() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyStatus('Copied')
+    } catch {
+      setCopyStatus('Could not copy')
+    }
+  }
+
+  return (
+    <>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      {canCopy && (
+        <div className="chat-reply-actions">
+          <button type="button" onClick={copyReply}>Copy reply</button>
+          <span role="status">{copyStatus}</span>
+        </div>
+      )}
+    </>
+  )
+}
+
 function Chat() {
   const [chatState, setChatState] = useState(loadChats)
   const [input, setInput] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [loadingChatId, setLoadingChatId] = useState(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
   const messagesRef = useRef(null)
+  const historyToggleRef = useRef(null)
   const pendingRef = useRef(false)
 
   const { chats, activeId } = chatState
@@ -64,6 +91,12 @@ function Chat() {
     }
   }, [activeChat?.messages, loadingChatId])
 
+  function closeHistory() {
+    if (!historyOpen) return
+    setHistoryOpen(false)
+    historyToggleRef.current?.focus({ preventScroll: true })
+  }
+
   function createNewChat() {
     const chat = makeChat()
 
@@ -73,10 +106,12 @@ function Chat() {
     }))
 
     setInput('')
+    closeHistory()
   }
 
   function selectChat(id) {
     setChatState(previous => ({ ...previous, activeId: id }))
+    closeHistory()
   }
 
   function renameChat(id) {
@@ -137,7 +172,7 @@ function Chat() {
     if (!question || pendingRef.current) return
 
     pendingRef.current = true
-    setError('')
+    setError(null)
 
     const targetId = activeId
     setLoadingChatId(targetId)
@@ -197,7 +232,10 @@ function Chat() {
       }))
     } catch (err) {
       console.error('เชื่อมต่อ Backend ไม่สำเร็จ:', err)
-      setError(err.message || 'Something went wrong. Please try again.')
+      setError({
+        chatId: targetId,
+        message: err.message || 'Something went wrong. Please try again.',
+      })
     } finally {
       pendingRef.current = false
       setLoadingChatId(null)
@@ -234,121 +272,119 @@ function Chat() {
 
         <div className="chat-layout">
           <aside className="chat-sidebar">
-            <h3>Chat History</h3>
-
             <button
-              id="new-chat-btn"
               type="button"
-              onClick={createNewChat}
+              className="chat-history-toggle"
+              ref={historyToggleRef}
+              aria-expanded={historyOpen}
+              aria-controls="chat-history-panel"
+              onClick={() => setHistoryOpen(previous => !previous)}
             >
-              + New Chat
+              <span>Chat History</span>
+              <span aria-hidden="true">{historyOpen ? '−' : '+'}</span>
             </button>
+            <div id="chat-history-panel" data-open={historyOpen}>
+              <h3>Chat History</h3>
 
-            <div id="chat-history">
-              {chats.map(chat => (
-                <div
-                  key={chat.id}
-                  className={
-                    `history-item ${chat.id === activeId ? 'active' : ''}`
-                  }
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <span
-                    onClick={() => selectChat(chat.id)}
-                    title={chat.title}
+              <button
+                id="new-chat-btn"
+                type="button"
+                onClick={createNewChat}
+              >
+                + New Chat
+              </button>
+
+              <div id="chat-history">
+                {chats.map(chat => (
+                  <div
+                    key={chat.id}
+                    className={
+                      `history-item ${chat.id === activeId ? 'active' : ''}`
+                    }
                     style={{
-                      flex: 1,
-                      minWidth: 0,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      cursor: 'pointer'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
                     }}
                   >
-                    {chat.title}
-                  </span>
+                    <button
+                      type="button"
+                      className="chat-history-title"
+                      aria-current={chat.id === activeId ? 'true' : undefined}
+                      onClick={() => selectChat(chat.id)}
+                      title={chat.title}
+                    >
+                      {chat.title}
+                    </button>
 
-                  <button
-                    type="button"
-                    aria-label="Rename chat"
-                    title="Rename chat"
-                    onClick={() => renameChat(chat.id)}
-                    style={historyButtonStyle}
-                  >
-                    ✎
-                  </button>
+                    <button
+                      type="button"
+                      className="chat-history-action"
+                      aria-label="Rename chat"
+                      title="Rename chat"
+                      onClick={() => renameChat(chat.id)}
+                      style={historyButtonStyle}
+                    >
+                      ✎
+                    </button>
 
-                  <button
-                    type="button"
-                    aria-label="Delete chat"
-                    title="Delete chat"
-                    onClick={() => deleteChat(chat.id)}
-                    style={historyButtonStyle}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      className="chat-history-action"
+                      aria-label="Delete chat"
+                      title="Delete chat"
+                      onClick={() => deleteChat(chat.id)}
+                      style={historyButtonStyle}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                id="clear-all-btn"
+                type="button"
+                onClick={clearAllChats}
+                style={{
+                  marginTop: '12px',
+                  width: '100%',
+                  padding: '9px',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  background: '#fffaf5',
+                  color: '#2b2a4a',
+                  border: '1px solid #2b2a4a'
+                }}
+              >
+                🗑 Clear All History
+              </button>
             </div>
-
-            <button
-              id="clear-all-btn"
-              type="button"
-              onClick={clearAllChats}
-              style={{
-                marginTop: '12px',
-                width: '100%',
-                padding: '9px',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                background: '#fffaf5',
-                color: '#2b2a4a',
-                border: '1px solid #2b2a4a'
-              }}
-            >
-              🗑 Clear All History
-            </button>
           </aside>
 
           <div className="chat-main">
             <div id="chat-messages" ref={messagesRef}>
               {activeChat?.messages.map((message, index) => (
                 <div
-                  key={index}
-                  className={
-                    message.sender === 'user'
-                      ? 'user-message'
-                      : 'bot-message'
-                  }
+                  key={`${activeId}-${index}`}
+                  className={message.sender === 'user' ? 'user-message' : 'bot-message'}
                 >
-              
-  {message.sender === 'bot' ? (
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-      {message.text}
-    </ReactMarkdown>
-  ) : (
-    message.text
-  )}
-</div>
-))}
-{loadingChatId === activeId && (
-  <div className="bot-message typing-message" role="status">
-    <span className="typing-dots" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
-    </span>
-    <span>AI is typing...</span>
-  </div>
-)}
+                  {message.sender === 'bot' ? (
+                    <AssistantReply text={message.text} canCopy={index > 0} />
+                  ) : message.text}
+                </div>
+              ))}
 
-              {error && (
-                <p role="alert" style={{ color: '#b42318' }}>
-                  {error}
+              {loadingChatId === activeId && (
+                <div className="bot-message typing-message" role="status">
+                  <span className="chat-loading-stars" aria-hidden="true">✦ ✧ ✦</span>
+                  <span>Waiting for the AI reply…</span>
+                </div>
+              )}
+
+              {error?.chatId === activeId && (
+                <p className="chat-request-error" role="alert">
+                  {error.message}
                 </p>
               )}
             </div>
@@ -357,12 +393,13 @@ function Chat() {
               <input
                 type="text"
                 id="user-input"
+                aria-label="Your message"
                 placeholder="Type your message..."
                 value={input}
                 disabled={loadingChatId !== null}
                 onChange={event => setInput(event.target.value)}
                 onKeyDown={event => {
-                  if (event.key === 'Enter') sendMessage()
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) sendMessage()
                 }}
               />
 
