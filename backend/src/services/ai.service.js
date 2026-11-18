@@ -1,15 +1,15 @@
 import Groq from "groq-sdk";
 import fs from "fs";
-import path from "path";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const portfolioPath = path.resolve("src/data/portfolio.json");
+const portfolioPath = new URL("../data/portfolio.json", import.meta.url);
 const portfolioData = fs.readFileSync(portfolioPath, "utf-8");
 
 let cachedModel = null;
 
 async function getAvailableModel() {
+  if (process.env.AI_MODEL) return process.env.AI_MODEL; // ตั้งใน .env ก่อน
   if (cachedModel) return cachedModel;
 
   const list = await groq.models.list();
@@ -58,8 +58,8 @@ export async function askAI(messages) {
       {
         role: "system",
         content: `คุณคือผู้ช่วยตอบคำถามของทีม "ฟ้าดลบันดาล" จงตอบคำถามโดยอ้างอิงจากข้อมูล JSON ต่อไปนี้เท่านั้น ห้ามแต่งเรื่องเพิ่ม
-กฎการจัดรูปแบบข้อความ (สำคัญมาก):
-- ห้ามใช้เครื่องหมายดอกจัน (**) หรือสัญลักษณ์ Markdown ใดๆ เด็ดขาด ให้ตอบเป็นข้อความธรรมดาที่สะอาดตา
+กฎการจัดรูปแบบข้อความ:
+- หน้าเว็บแสดงผล Markdown ได้ ใช้ได้เฉพาะรายการขีด (-) และตัวหนา (**) เมื่อจำเป็น
 - หากมีหลายข้อ ให้ขึ้นบรรทัดใหม่และใช้ขีด (-) นำหน้าแต่ละข้อ
 - ตอบให้กระชับ เป็นมิตร และใช้ภาษาเดียวกับที่ผู้ใช้ถาม
 
@@ -73,5 +73,5 @@ export async function askAI(messages) {
   });
 
   const rawReply = response.choices[0]?.message?.content || "ขออภัย ไม่สามารถประมวลผลคำตอบได้";
-  return rawReply.replace(/\*\*/g, "").replace(/^\*\s/gm, "- ");
+  return rawReply;
 }

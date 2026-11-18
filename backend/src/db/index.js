@@ -3,8 +3,8 @@ import { readFileSync } from "fs";
 
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  // ถ้า deploy บน Render/Railway ที่ต้องใช้ SSL ให้เปิดบรรทัดล่าง
-  // ssl: { rejectUnauthorized: false },
+  // บน Render/Neon/Railway ให้ตั้ง DATABASE_SSL=true
+  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
 });
 
 // สร้างตารางอัตโนมัติจาก schema.sql ตอนเริ่มเซิร์ฟเวอร์

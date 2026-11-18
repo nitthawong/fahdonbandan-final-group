@@ -5,14 +5,20 @@ import './App.css'
 
 const STORAGE_KEY = 'ourteam-chats'
 const ACTIVE_KEY = 'ourteam-active-chat'
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_URL =
+  import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`
+
+// crypto.randomUUID ใช้ได้เฉพาะ localhost/HTTPS -> เปิดผ่าน IP ในมือถือจะพัง จึงมี fallback
+const uid = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
 const greeting =
   "Hello! I'm the ฟ้าดลบันดาล AI Assistant. How can I help you today?"
 
 function makeChat() {
   return {
-    id: crypto.randomUUID(),
+    id: uid(),
     title: 'New Chat',
     messages: [{ sender: 'bot', text: greeting }]
   }
@@ -46,6 +52,7 @@ function Chat() {
   const [input, setInput] = useState('')
   const [loadingChatId, setLoadingChatId] = useState(null)
   const [error, setError] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const messagesRef = useRef(null)
   const pendingRef = useRef(false)
 
@@ -73,10 +80,18 @@ function Chat() {
     }))
 
     setInput('')
+    setSidebarOpen(false)
   }
 
   function selectChat(id) {
     setChatState(previous => ({ ...previous, activeId: id }))
+    setSidebarOpen(false)
+  }
+
+  function deleteRemote(id) {
+    fetch(`${API_URL}/api/chat/history/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }).catch(() => {})
   }
 
   function renameChat(id) {
@@ -103,6 +118,8 @@ function Chat() {
 
     if (!window.confirm(`Delete "${chat.title}"?`)) return
 
+    deleteRemote(id)
+
     setChatState(previous => {
       const remaining = previous.chats.filter(item => item.id !== id)
 
@@ -125,6 +142,8 @@ function Chat() {
     if (!window.confirm('Delete ALL chat history? This cannot be undone.')) {
       return
     }
+
+    chats.forEach(chat => deleteRemote(chat.id))
 
     const fresh = makeChat()
     setChatState({ chats: [fresh], activeId: fresh.id })
@@ -233,7 +252,7 @@ function Chat() {
         </div>
 
         <div className="chat-layout">
-          <aside className="chat-sidebar">
+          <aside className={`chat-sidebar ${sidebarOpen ? 'is-open' : ''}`}>
             <h3>Chat History</h3>
 
             <button
@@ -248,46 +267,33 @@ function Chat() {
               {chats.map(chat => (
                 <div
                   key={chat.id}
-                  className={
-                    `history-item ${chat.id === activeId ? 'active' : ''}`
-                  }
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
+                  className={`history-item ${chat.id === activeId ? 'active' : ''}`}
                 >
-                  <span
+                  <button
+                    type="button"
+                    className="history-title"
                     onClick={() => selectChat(chat.id)}
                     title={chat.title}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      cursor: 'pointer'
-                    }}
                   >
                     {chat.title}
-                  </span>
+                  </button>
 
                   <button
                     type="button"
+                    className="history-action"
                     aria-label="Rename chat"
                     title="Rename chat"
                     onClick={() => renameChat(chat.id)}
-                    style={historyButtonStyle}
                   >
                     ✎
                   </button>
 
                   <button
                     type="button"
+                    className="history-action"
                     aria-label="Delete chat"
                     title="Delete chat"
                     onClick={() => deleteChat(chat.id)}
-                    style={historyButtonStyle}
                   >
                     ×
                   </button>
@@ -299,22 +305,21 @@ function Chat() {
               id="clear-all-btn"
               type="button"
               onClick={clearAllChats}
-              style={{
-                marginTop: '12px',
-                width: '100%',
-                padding: '9px',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                background: '#fffaf5',
-                color: '#2b2a4a',
-                border: '1px solid #2b2a4a'
-              }}
             >
               🗑 Clear All History
             </button>
           </aside>
 
           <div className="chat-main">
+            <button
+              type="button"
+              className="sidebar-toggle"
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen(open => !open)}
+            >
+              ☰ Chats
+            </button>
+
             <div id="chat-messages" ref={messagesRef}>
               {activeChat?.messages.map((message, index) => (
                 <div
@@ -362,7 +367,7 @@ function Chat() {
                 disabled={loadingChatId !== null}
                 onChange={event => setInput(event.target.value)}
                 onKeyDown={event => {
-                  if (event.key === 'Enter') sendMessage()
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) sendMessage()
                 }}
               />
 
@@ -403,15 +408,5 @@ function Chat() {
   )
 }
 
-const historyButtonStyle = {
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  fontSize: '17px',
-  color: '#2b2a4a',
-  padding: '2px 5px',
-  boxShadow: 'none',
-  flexShrink: 0
-}
 
 export default Chat
