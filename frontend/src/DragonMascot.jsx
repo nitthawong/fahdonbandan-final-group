@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 const SETTINGS_KEY = 'fahdonbandan:frog-settings'
 const MAX_NAME_LENGTH = 24
+const DEFAULT_NAME = 'Drago'
 const moods = {
   auto: 'Automatic',
   idle: 'Relaxed',
@@ -32,7 +33,7 @@ const labels = {
 
 export default function DragonMascot({ state }) {
   const [settings, setSettings] = useState(readSettings)
-  const name = settings.name.trim() || 'Mango'
+  const name = settings.name.trim() || DEFAULT_NAME
   const hasRequestStatus = state === 'thinking' || state === 'limit'
   const pose = hasRequestStatus || settings.mood === 'auto' ? state : settings.mood
 
@@ -48,7 +49,10 @@ export default function DragonMascot({ state }) {
     <div className="chat-mascot-control">
       <figure className="chat-mascot" data-state={pose}>
         <div className="chat-mascot-art" aria-hidden="true">
-          <img src="/mango-bearded-dragon.png" alt="" width="640" height="640" />
+          <span className="chat-mascot-pose">
+            <img className="chat-mascot-idle" src="/drago-idle.png" alt="" width="640" height="640" />
+            <img className="chat-mascot-atlas" src="/drago-expressions.webp" alt="" width="1024" height="1024" />
+          </span>
           <span className="chat-mascot-emote">
             {pose === 'thinking' ? '···' : pose === 'working' ? '✧' : pose === 'done' ? '✦' : pose === 'limit' ? '!' : ''}
           </span>
@@ -68,7 +72,7 @@ export default function DragonMascot({ state }) {
               type="text"
               value={settings.name}
               maxLength={MAX_NAME_LENGTH}
-              placeholder="Mango"
+              placeholder={DEFAULT_NAME}
               onChange={event => {
                 const nextName = event.target.value
                 setSettings(previous => ({ ...previous, name: nextName }))
