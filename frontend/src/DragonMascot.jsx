@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { dragoImages, getDragoColorImages } from './dragoColors'
 
 const SETTINGS_KEY = 'fahdonbandan:frog-settings'
 const MAX_NAME_LENGTH = 24
@@ -52,12 +53,24 @@ export default function DragonMascot({ state }) {
   const [settings, setSettings] = useState(readSettings)
   const [position, setPosition] = useState(null)
   const [dragging, setDragging] = useState(false)
+  const [coloredImages, setColoredImages] = useState(null)
+  const [greeting, setGreeting] = useState(false)
+  const [peeking, setPeeking] = useState(false)
+  const peekTimer = useRef(null)
+  const greetingTimer = useRef(null)
+  const suppressGreeting = useRef(false)
   const figure = useRef(null)
   const handle = useRef(null)
   const press = useRef(null)
   const name = settings.name.trim() || DEFAULT_NAME
   const hasRequestStatus = state === 'thinking' || state === 'limit'
-  const pose = hasRequestStatus || settings.mood === 'auto' ? state : settings.mood
+  const automaticIdle = state === 'idle' && settings.mood === 'auto'
+  const images = coloredImages?.color === settings.color ? coloredImages : dragoImages
+  let pose = settings.mood === 'auto' ? state : settings.mood
+
+  if (automaticIdle && peeking) pose = 'thinking'
+  if (greeting) pose = 'done'
+  if (hasRequestStatus) pose = state
 
   useEffect(() => {
     try {
@@ -66,6 +79,34 @@ export default function DragonMascot({ state }) {
       // The controls remain usable for the current visit.
     }
   }, [settings])
+
+  useEffect(() => {
+    let active = true
+    getDragoColorImages(settings.color)
+      .then(images => { if (active) setColoredImages(images) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [settings.color])
+
+  useEffect(() => () => {
+    window.clearTimeout(greetingTimer.current)
+    window.clearTimeout(peekTimer.current)
+  }, [])
+
+  useEffect(() => {
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (!automaticIdle || motion.matches) return
+
+    const peek = window.setInterval(() => {
+      const bounds = figure.current?.getBoundingClientRect()
+      if (motion.matches || document.hidden || press.current || !bounds ||
+          bounds.bottom < 0 || bounds.top > window.innerHeight) return
+      setPeeking(true)
+      peekTimer.current = window.setTimeout(() => setPeeking(false), 1500)
+    }, 12500)
+
+    return () => window.clearInterval(peek)
+  }, [automaticIdle])
 
   useEffect(() => {
     const element = figure.current
@@ -90,6 +131,7 @@ export default function DragonMascot({ state }) {
 
   function startDrag(event) {
     if (!event.isPrimary || event.button !== 0) return
+    suppressGreeting.current = false
     const bounds = figure.current.getBoundingClientRect()
     press.current = {
       id: event.pointerId,
@@ -110,6 +152,7 @@ export default function DragonMascot({ state }) {
     if (!active.moved && Math.hypot(dx, dy) < 5) return
 
     active.moved = true
+    suppressGreeting.current = true
     setDragging(true)
     const { bounds } = active
     setPosition(previous => ({
@@ -122,6 +165,13 @@ export default function DragonMascot({ state }) {
     if (press.current?.id !== event.pointerId) return
     press.current = null
     setDragging(false)
+  }
+
+  function greet(event) {
+    if (hasRequestStatus || (event.detail > 0 && suppressGreeting.current)) return
+    window.clearTimeout(greetingTimer.current)
+    setGreeting(true)
+    greetingTimer.current = window.setTimeout(() => setGreeting(false), 1200)
   }
 
   function returnToDock() {
@@ -161,14 +211,16 @@ export default function DragonMascot({ state }) {
           data-color={settings.color}
           data-floating={Boolean(position)}
           data-dragging={dragging}
+          data-greeting={greeting && !hasRequestStatus}
           style={position ? { left: position.x, top: position.y } : undefined}
         >
           <button
             ref={handle}
             type="button"
             className="chat-mascot-art"
-            aria-label={`Move ${name}. Drag or use arrow keys. Press Home to return.`}
-            title="Drag to move"
+            aria-label={`Move or greet ${name}. Click to greet, drag or use arrow keys to move. Press Home to return.`}
+            title="Tap to greet · Drag to move"
+            onClick={greet}
             onPointerDown={startDrag}
             onPointerMove={moveDrag}
             onPointerUp={stopDrag}
@@ -177,11 +229,11 @@ export default function DragonMascot({ state }) {
             onKeyDown={moveWithKeys}
           >
             <span className="chat-mascot-pose" aria-hidden="true">
-              <img className="chat-mascot-idle" src="/drago-idle.png" alt="" width="640" height="640" />
-              <img className="chat-mascot-atlas" src="/drago-expressions.webp" alt="" width="1024" height="1024" />
+              <img className="chat-mascot-idle" src={images.idle} alt="" width="640" height="640" />
+              <img className="chat-mascot-atlas" src={images.expressions} alt="" width="1024" height="1024" />
             </span>
             <span className="chat-mascot-emote" aria-hidden="true">
-              {pose === 'thinking' ? '···' : pose === 'working' ? '✧' : pose === 'done' ? '✦' : pose === 'limit' ? '!' : ''}
+              {greeting && !hasRequestStatus ? '♥' : pose === 'thinking' ? '···' : pose === 'working' ? '✧' : pose === 'done' ? '✦' : pose === 'limit' ? '!' : ''}
             </span>
           </button>
           <figcaption className="chat-mascot-tag">
